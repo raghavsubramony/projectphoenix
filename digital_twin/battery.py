@@ -45,7 +45,7 @@ class Battery:
 
     # --- thermal helpers (no-ops when cfg.thermal is None) ------------------
 
-    def _derate_factor(self) -> float:
+    def derate_factor(self) -> float:
         t = self.cfg.thermal
         if t is None:
             return 1.0
@@ -79,7 +79,7 @@ class Battery:
     # --- power exchange -----------------------------------------------------
 
     def _discharge(self, power_w: float, dt_s: float) -> float:
-        power_w = min(power_w, self.cfg.max_discharge_w * self._derate_factor())
+        power_w = min(power_w, self.cfg.max_discharge_w * self.derate_factor())
         if self.cfg.thermal is None:
             max_w = self.energy_j / dt_s
             power_w = min(power_w, max_w)
@@ -102,7 +102,7 @@ class Battery:
         return power_w
 
     def _charge(self, power_w: float, dt_s: float) -> float:
-        power_w = min(power_w, self.cfg.max_charge_w * self._derate_factor())
+        power_w = min(power_w, self.cfg.max_charge_w * self.derate_factor())
         if self.cfg.thermal is None:
             store_w = power_w * self.CHARGE_EFFICIENCY
             headroom_j = self.cfg.usable_capacity_j - self.energy_j

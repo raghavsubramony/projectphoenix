@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Callable
 
-from .config import TwinConfig, phase1_variants
+from .config import TwinConfig, phase1_variants, phase1_config_for, PHASE1_BODIES
 from .drive_cycles import DriveCycle, DriveCycles
 from .powertrain import Powertrain
 from .simulation import run
@@ -28,6 +28,35 @@ def standard_cycles() -> list[DriveCycle]:
         DriveCycles.towing_grade(),
         DriveCycles.mixed(),
     ]
+
+
+def stress_unmet_launch_kj(coupled: bool, energy_scale: float = 1.0,
+                           battery_derate_w: float = 40_000.0,
+                           slew_w_per_s: float = 60_000.0) -> float:
+    """Unmet launch energy (kJ) for the lead body on the transient-stress cycle.
+
+    Drives the Phase-1 lead body over the hard-launch stress cycle with a cold
+    (power-limited) battery and a slew-limited engine, integrating the per-step
+    capability shortfall. ``coupled`` enables PCMRITMS rotor coupling and
+    ``energy_scale`` grows the inertial reservoir (a proxy for a larger rotor
+    set). Shared by the demo runner and the rotor-scaling regression test so the
+    headline numbers and the assertions cannot silently diverge.
+    """
+    cfg = phase1_config_for(PHASE1_BODIES[0], rotor_coupled=coupled)
+    buf = replace(cfg.buffer, max_energy_j=cfg.buffer.max_energy_j * energy_scale)
+    cfg = replace(
+        cfg, buffer=buf,
+        atpe=replace(cfg.atpe, max_slew_w_per_s=slew_w_per_s),
+        battery=replace(cfg.battery, max_discharge_w=battery_derate_w,
+                        initial_soc=cfg.battery.soc_target))
+    twin = Powertrain(cfg)
+    cyc = DriveCycles.transient_stress(dt_s=0.2)
+    acc = cyc.accelerations()
+    unmet_j = 0.0
+    for i in range(len(cyc.speeds_ms)):
+        rec = twin.step(cyc.speeds_ms[i], acc[i], cyc.grades_rad[i], cyc.dt_s)
+        unmet_j += rec.shortfall_w * cyc.dt_s
+    return unmet_j / 1000.0
 
 
 def charge_sustaining_bodies(

@@ -6,6 +6,9 @@ drive cycles and prints an engineering report for each.
 
 from dataclasses import replace
 
+import argparse
+from contextlib import contextmanager
+
 from digital_twin import (
     DriveCycles,
     Powertrain,
@@ -39,16 +42,41 @@ from digital_twin import (
     fleet_regulatory,
     regulatory_economy_table,
     build_executive_summary,
+    fleet_cold_start,
+    cold_start_table,
+    fleet_payload,
+    payload_table,
+    fleet_phev,
+    phev_table,
+    GridConfig,
+    fleet_degradation,
+    degradation_table,
     tco_table,
     stress_bodies,
+    stress_unmet_launch_kj,
+    closed_loop_rotor_bodies,
+    ClosedLoopRotorController,
+    DriveCycle,
     RotorSet,
     PHASE1_BODIES,
     simulate_torque_augmentation,
 )
 from digital_twin.acceptance import compare_bodies, recommend_motors, report_bodies, sweep_grid
 from digital_twin.acceptance import report as ers_report
+from digital_twin.battery import Battery
+from digital_twin.config import BatteryConfig, BatteryThermalConfig, KWH_TO_J, KW
 from digital_twin.pcmritms import InertialBuffer
 from ml_study import describe_ranges, run_study, learned_bodies
+
+
+@contextmanager
+def _section(label: str):
+    """Run a demo block in isolation: a failure prints a notice and is skipped
+    rather than aborting the entire ~260-line report."""
+    try:
+        yield
+    except Exception as exc:  # pragma: no cover - demo resilience, not logic
+        print(f"  [section '{label}' skipped: {type(exc).__name__}: {exc}]\n")
 
 
 def _charge_sustaining_phase1() -> Powertrain:
@@ -62,26 +90,30 @@ def _charge_sustaining_phase1() -> Powertrain:
     return Powertrain(cfg)
 
 
-def main() -> None:
-    print("Project Phoenix - ATPE + PCMRITMS powertrain digital twin\n")
-
-    print(build_executive_summary().report())
+def main(quick: bool = False) -> None:
+    print("Project Phoenix - ATPE + PCMRITMS powertrain digital twin")
+    if quick:
+        print("(--quick: expensive Monte Carlo / uncertainty / ML blocks reduced)")
     print()
 
+    with _section("executive summary"):
+        print(build_executive_summary().report())
+        print()
+
     print("# Charge-depleting (PHEV, full battery) - real owner behavior\n")
-    for label, cycle in [
-        ("Urban", DriveCycles.urban()),
-        ("Highway", DriveCycles.highway()),
-        ("Towing + grade", DriveCycles.towing_grade()),
-        ("Mixed", DriveCycles.mixed()),
+    for cycle in [
+        DriveCycles.urban(),
+        DriveCycles.highway(),
+        DriveCycles.towing_grade(),
+        DriveCycles.mixed(),
     ]:
         print(run(build_default_twin(), cycle).report())
         print()
 
     print("# Charge-sustaining (battery at target) - representative fuel economy\n")
-    for label, cycle in [
-        ("Highway", DriveCycles.highway()),
-        ("Towing + grade", DriveCycles.towing_grade()),
+    for cycle in [
+        DriveCycles.highway(),
+        DriveCycles.towing_grade(),
     ]:
         print(run(_charge_sustaining_phase1(), cycle).report())
         print()
@@ -158,11 +190,12 @@ def main() -> None:
 
     print("# PCMRITMS scaling - more rotors = burst + reservoir = capability\n")
     print("  Cold 40 kW battery, transient-stress launches, AWD SUV:")
-    for label, scale in [("baseline 3-rotor (90 kW, 118 kJ)", None),
-                         ("coupled  3-rotor (140 kW, 118 kJ)", 1.0),
-                         ("coupled  ~5-rotor (140 kW, 236 kJ)", 2.0),
-                         ("coupled  ~6-rotor (140 kW, 354 kJ)", 3.0)]:
-        unmet = _stress_unmet_kj(scale)
+    for label, coupled, scale in [
+            ("baseline 3-rotor (90 kW, 118 kJ)", False, 1.0),
+            ("coupled  3-rotor (140 kW, 118 kJ)", True, 1.0),
+            ("coupled  ~5-rotor (140 kW, 236 kJ)", True, 2.0),
+            ("coupled  ~6-rotor (140 kW, 354 kJ)", True, 3.0)]:
+        unmet = stress_unmet_launch_kj(coupled=coupled, energy_scale=scale)
         print(f"    {label:34s}: {unmet:7.1f} kJ unmet launch energy")
     print()
 
@@ -189,7 +222,7 @@ def main() -> None:
     print("# Unified-AI learning study - online policy learned from twin data\n")
     print(describe_ranges())
     print()
-    _study, study_report = run_study(epochs=3)
+    _study, study_report = run_study(epochs=1 if quick else 3)
     print(study_report.report())
     print()
 
@@ -226,7 +259,8 @@ def main() -> None:
     print(tco[0].report())
     print()
 
-    _demo_closed_loop_rotor()
+    with _section("closed-loop rotor surge control"):
+        _demo_closed_loop_rotor()
 
     print("# Component right-sizing - how big does the battery actually need to be?\n")
     print("  Capability is governed by battery DISCHARGE POWER (buffer energy and")
@@ -238,10 +272,14 @@ def main() -> None:
     print("# Uncertainty bands - every headline number is a range, not a point\n")
     print("  Vary all uncertain inputs together (physical + economic) and report")
     print("  the spread, so each figure carries an honest confidence interval.\n")
-    print(monte_carlo_fuel(trials=200, seed=0).report())
-    print()
-    print(uncertainty_table(fleet_uncertainty(trials=64, seed=0)))
-    print()
+    with _section("uncertainty bands"):
+        print(monte_carlo_fuel(trials=40 if quick else 200, seed=0).report())
+        print()
+        if quick:
+            print("  (--quick: fleet uncertainty table skipped)\n")
+        else:
+            print(uncertainty_table(fleet_uncertainty(trials=64, seed=0)))
+            print()
 
     print("# Ambient temperature stress (-10 C to +40 C)\n")
     print("  Cold air is denser (more drag) and the cabin needs heating;")
@@ -259,6 +297,37 @@ def main() -> None:
     print(regulatory_economy_table(fleet_regulatory()))
     print()
 
+    print("# Cold-start engine penalty (Move J)\n")
+    print("  Real engines burn richer while warming up. This rides on top of")
+    print("  the validated warm run and decays with engine run time.\n")
+    print(cold_start_table(fleet_cold_start(ambient_c=20)))
+    print()
+    print(cold_start_table(fleet_cold_start(ambient_c=-10)))
+    print("  => urban is pure-EV (engine never starts) so the penalty is a")
+    print("     long-trip phenomenon; cold weather amplifies it.\n")
+
+    print("# Payload and passenger loading (Move K)\n")
+    print("  Adding occupants and cargo on top of the validated kerb mass.\n")
+    print(payload_table(fleet_payload()))
+    print("  => full load adds 12-41% fuel (biggest % on the light bodies);")
+    print("     capability holds on the grade test for every body.\n")
+
+    print("# Grid-charging (PHEV) economics (Move L)\n")
+    print("  Driving on grid electricity vs fuel, split by utility factor.\n")
+    print(phev_table(fleet_phev()))
+    print()
+    print("  Clean grid (0.05 kg/kWh):")
+    print(phev_table(fleet_phev(grid=GridConfig(grid_co2_kg_per_kwh=0.05)),
+                     GridConfig(grid_co2_kg_per_kwh=0.05)))
+    print("  => with an efficient hybrid, the CO2 win hinges on grid cleanliness,")
+    print("     not merely on plugging in; the heavy fuel users gain the most.\n")
+
+    print("# Drivetrain degradation over life (Move M)\n")
+    print("  Ageing the pack and driveline from new to 250,000 km.\n")
+    print(degradation_table(fleet_degradation()))
+    print("  => EV range fades a consistent ~23% (capacity-led); fuel drifts up,")
+    print("     large in % only on the light bodies (small denominator).\n")
+
 
 def _demo_closed_loop_rotor() -> None:
     """A/B the closed-loop rotor surge controller against static coupling.
@@ -269,9 +338,6 @@ def _demo_closed_loop_rotor() -> None:
     rating and shifts the overflow to the battery, conserving the inertial
     reservoir at equal-or-better capability.
     """
-    from digital_twin import closed_loop_rotor_bodies, ClosedLoopRotorController
-    from digital_twin.drive_cycles import DriveCycle
-
     print("# Closed-loop rotor surge control - is the 140 kW surge the limit?\n")
 
     static = {(c.body, c.cycle): c for c in
@@ -317,8 +383,6 @@ def _demo_closed_loop_rotor() -> None:
 def _demo_battery_thermal_runaway() -> None:
     """Drive a small, weakly-cooled pack at constant 100 kW to show the lumped
     thermal model heating and self-derating (proves the model is alive)."""
-    from digital_twin.battery import Battery
-    from digital_twin.config import BatteryConfig, BatteryThermalConfig, KWH_TO_J, KW
     th = BatteryThermalConfig(thermal_mass_j_per_k=8000.0, cooling_w_per_k=15.0,
                               internal_resistance_ohm=0.08)
     cfg = BatteryConfig(usable_capacity_j=30 * KWH_TO_J, max_discharge_w=120 * KW,
@@ -331,33 +395,15 @@ def _demo_battery_thermal_runaway() -> None:
         if s in (0, 60, 120, 179):
             print(f"    t={s:3d}s  T={batt.temperature_c:5.1f} C  "
                   f"delivered={delivered/1000:5.1f} kW  "
-                  f"derate={batt._derate_factor():.2f}")
-
-
-def _stress_unmet_kj(energy_scale) -> float:
-    """Unmet launch energy for the SUV on the stress cycle (cold battery).
-
-    `energy_scale=None` is the uncoupled baseline buffer; a float enables rotor
-    coupling and scales the reservoir (proxy for a larger rotor set).
-    """
-    coupled = energy_scale is not None
-    cfg = phase1_config_for(PHASE1_BODIES[0], rotor_coupled=coupled)
-    buf = cfg.buffer
-    if energy_scale is not None:
-        buf = replace(buf, max_energy_j=buf.max_energy_j * energy_scale)
-    cfg = replace(cfg, buffer=buf,
-                  atpe=replace(cfg.atpe, max_slew_w_per_s=60_000.0),
-                  battery=replace(cfg.battery, max_discharge_w=40_000.0,
-                                  initial_soc=cfg.battery.soc_target))
-    tw = Powertrain(cfg)
-    cyc = DriveCycles.transient_stress(dt_s=0.2)
-    acc = cyc.accelerations()
-    unmet = 0.0
-    for i in range(len(cyc.speeds_ms)):
-        r = tw.step(cyc.speeds_ms[i], acc[i], cyc.grades_rad[i], cyc.dt_s)
-        unmet += r.shortfall_w * cyc.dt_s
-    return unmet / 1000.0
+                  f"derate={batt.derate_factor():.2f}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Project Phoenix digital-twin demo runner.")
+    parser.add_argument(
+        "--quick", action="store_true",
+        help="reduce the expensive Monte Carlo / uncertainty / ML blocks "
+             "for a fast smoke run.")
+    args = parser.parse_args()
+    main(quick=args.quick)

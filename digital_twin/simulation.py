@@ -138,7 +138,7 @@ def run(twin: Powertrain, cycle: DriveCycle) -> Result:
 
     n = len(cycle.speeds_ms)
     result.distance_km = distance_m / 1000.0
-    result.duration_s = cycle.duration_s
+    result.duration_s = n * dt
     result.mean_speed_kmh = (speed_sum / n) * 3.6 if n else 0.0
     result.peak_speed_kmh = peak_speed * 3.6
     result.fuel_l = fuel_l

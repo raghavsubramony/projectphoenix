@@ -41,6 +41,11 @@ from digital_twin import (
     fleet_regulatory,
     RegulatoryCycles,
     build_executive_summary,
+    fleet_cold_start,
+    fleet_payload,
+    fleet_phev,
+    GridConfig,
+    fleet_degradation,
     monte_carlo_fuel,
     phase1_body_targets,
     phase1_config,
@@ -304,13 +309,93 @@ def _check_summary() -> list[Check]:
     return checks
 
 
+def _check_coldstart() -> list[Check]:
+    checks: list[Check] = []
+    from digital_twin import DriveCycles
+    # Pure-EV urban -> no engine, no cold-start penalty.
+    urban = fleet_cold_start(ambient_c=-10, cycle=DriveCycles.urban())
+    ok = all(r.penalty_l == 0.0 and r.engine_on_s == 0.0 for r in urban)
+    checks.append(Check("Cold-start adds nothing on a pure-EV cycle",
+                        ok, f"all {len(urban)} bodies 0 penalty"))
+    # Where the engine runs, cold weather adds fuel and beats a warm start.
+    warm = fleet_cold_start(ambient_c=20)
+    cold = fleet_cold_start(ambient_c=-10)
+    ok2 = all(c.penalty_l > w.penalty_l > 0.0
+              for w, c in zip(warm, cold))
+    suv = cold[0]
+    checks.append(Check("Colder start raises the engine-on penalty",
+                        ok2, f"SUV -10C +{suv.penalty_pct:.1f}% "
+                        f"(engine {suv.engine_on_s:.0f}s)"))
+    return checks
+
+
+def _check_payload() -> list[Check]:
+    checks: list[Check] = []
+    sweeps = fleet_payload()
+    # Fuel rises monotonically with payload for every body.
+    ok = all(
+        [p.fuel_l_per_100km for p in s.points]
+        == sorted(p.fuel_l_per_100km for p in s.points)
+        and s.full_penalty_pct > 0.0
+        for s in sweeps)
+    checks.append(Check("Payload raises fuel monotonically",
+                        ok, f"SUV full load +{sweeps[0].full_penalty_pct:.1f}%"))
+    # Capability still holds under a full cabin + cargo.
+    ok2 = all(s.stays_capable for s in sweeps)
+    checks.append(Check("Capability holds under full payload",
+                        ok2, f"{len(sweeps)} bodies, 0 grade misses"))
+    return checks
+
+
+def _check_phev() -> list[Check]:
+    checks: list[Check] = []
+    res = fleet_phev()
+    # Every body has a positive CD range and a bounded utility factor.
+    ok = all(r.cd_range_km > 0.0 and 0.0 <= r.utility_factor <= 1.0
+             for r in res)
+    checks.append(Check("PHEV charge-depleting range is sane",
+                        ok, f"SUV {res[0].cd_range_km:.0f} km, "
+                        f"UF {res[0].utility_factor:.2f}"))
+    # A cleaner grid lowers plug-in CO2 for every body.
+    dirty = fleet_phev(grid=GridConfig(grid_co2_kg_per_kwh=0.40))
+    clean = fleet_phev(grid=GridConfig(grid_co2_kg_per_kwh=0.05))
+    ok2 = all(c.phev_co2_g_per_km < d.phev_co2_g_per_km
+              for d, c in zip(dirty, clean))
+    checks.append(Check("Cleaner grid lowers plug-in CO2",
+                        ok2, "all bodies fall with grid intensity"))
+    return checks
+
+
+def _check_degradation() -> list[Check]:
+    checks: list[Check] = []
+    curves = fleet_degradation()
+    # Ageing raises fuel and cuts EV range for every body.
+    ok = all(c.fuel_drift_pct > 0.0 and c.range_loss_pct > 0.0
+             for c in curves)
+    suv = curves[0]
+    checks.append(Check("Ageing raises fuel and cuts EV range",
+                        ok, f"SUV +{suv.fuel_drift_pct:.1f}% fuel, "
+                        f"-{suv.range_loss_pct:.1f}% range"))
+    # The new-vehicle point reproduces the validated warm fuel exactly.
+    body = PHASE1_BODIES[0]
+    base = phase1_config_for(body)
+    cs = replace(base, battery=replace(base.battery,
+                                       initial_soc=base.battery.soc_target))
+    validated = run(Powertrain(cs), DriveCycles.mixed()).fuel_l_per_100km
+    ok2 = abs(suv.new.fuel_l_per_100km - validated) < 1e-6
+    checks.append(Check("New-vehicle point matches validated fuel",
+                        ok2, f"{suv.new.fuel_l_per_100km:.3f} L/100km"))
+    return checks
+
+
 def run_checks() -> list[Check]:
     checks: list[Check] = []
     for group in (_check_rotor, _check_coupling, _check_fuel_economy,
                   _check_acceptance, _check_durability, _check_robustness,
                   _check_economics, _check_closed_loop, _check_sizing,
                   _check_uncertainty, _check_ambient, _check_regulatory,
-                  _check_summary):
+                  _check_summary, _check_coldstart, _check_payload,
+                  _check_phev, _check_degradation):
         checks.extend(group())
     return checks
 

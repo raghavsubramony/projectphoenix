@@ -39,7 +39,7 @@ so we can see how the same technology behaves on a light car versus a heavy truc
 ## 3. How we work: every change is a measured "Move"
 
 Rather than rebuilding everything at once, we add one realism layer at a time. We call each
-one a **"Move"** (A, B, C, D, E, F, G, H, I). Every Move follows the same discipline:
+one a **"Move"** (A, B, C, D, E, F, G, H, I, J, K, L, M). Every Move follows the same discipline:
 
 1. Build the new capability.
 2. Make it **opt-in** — it can never quietly worsen numbers we already trust.
@@ -47,7 +47,7 @@ one a **"Move"** (A, B, C, D, E, F, G, H, I). Every Move follows the same discip
 4. Lock the result with automated tests so it can never silently break later.
 
 There is also a single command — **`verify.py`** — that re-checks every headline number and
-runs the whole test suite. Today it confirms **21 checks + 51 tests all pass**. That's our
+runs the whole test suite. Today it confirms **38 checks + 93 tests all pass**. That's our
 "nothing is broken" green light.
 
 ---
@@ -190,6 +190,40 @@ rebuilt those and ran the fleet on them.
 
 ---
 
+### Move J — "What about a cold start?" (engine warm-up)
+A real engine drinks extra fuel for the first minute while it warms up. We added that penalty
+on top of the warm result, so no earlier number changes.
+
+- The surprise: on **city driving the penalty is zero**, because the car runs on the battery and
+  the engine never starts. The penalty only shows up on **longer trips** where the engine runs.
+- **Cold weather makes it worse** — a −10 °C start costs more than a mild one.
+- The lightweight bodies show big *percentages* only because their warm fuel use is already tiny.
+
+### Move K — "What if it's full of people and luggage?" (payload)
+Every number so far was for a car with just a driver. We loaded it up to five people plus cargo
+(about +475 kg) and re-checked.
+
+- Fuel use rises **12–41%** fully loaded — biggest *percentage* on the lightest cars.
+- **The car still pulls every hill** fully loaded — capability never fails.
+
+### Move L — "What if you plug it in?" (grid charging)
+The battery is big enough to drive a real distance on cheap grid electricity if you charge it.
+We compared driving on electricity vs fuel.
+
+- The honest twist: because the hybrid is **already so fuel-efficient**, plugging into a *dirty*
+  power grid is barely greener and can even cost a touch more.
+- The real win comes (a) for the **thirsty pickup**, and (b) when the **grid is clean** — then
+  CO₂ roughly halves or better. So the lever is *how clean your electricity is*, not the plug itself.
+
+### Move M — "How does it age?" (wear over 250,000 km)
+Every figure so far was for a brand-new car. We aged the battery and drivetrain to end-of-life.
+
+- **Electric range fades about 23%** over the car's life (the battery slowly shrinks).
+- **Fuel use creeps up** — noticeable in percent only on the lightest cars, small in real litres.
+- A brand-new car reproduces the validated numbers exactly, so nothing earlier is affected.
+
+---
+
 ## 5. The big-picture conclusions
 
 - **The architecture is sound and honest.** Every claim is reproducible from the model.
@@ -199,6 +233,11 @@ rebuilt those and ran the fleet on them.
   Moves (C, E and F) reached the same conclusion from different directions.
 - **The small battery runs cool in every season** — a +40 °C day never makes it throttle back,
   the same "comfortably over-specced" verdict from a second angle.
+- **Loaded, cold, or plugged in, the verdict holds** — a full payload never defeats the hill
+  climb, a cold start only costs fuel on longer trips, and plugging in only pays off CO₂ when the
+  grid is clean.
+- **It ages gracefully** — about 23% electric-range loss over 250,000 km, with fuel creeping up
+  only modestly in real terms.
 - **The default battery power is over-specced** — right-sizing it saves cost and weight while
   keeping the small, low-carbon pack.
 - **Cost and CO₂ are competitive** across everything from a hatchback to a pickup.
@@ -218,7 +257,7 @@ itself from the live code and pass:
 .venv\Scripts\python.exe verify.py
 ```
 
-Today that prints **`RESULT: PASS (29 checks + 69 tests)`**. There's also a full demo
+Today that prints **`RESULT: PASS (38 checks + 93 tests)`**. There's also a full demo
 (`python main.py`) that walks through every result described above.
 
 ---

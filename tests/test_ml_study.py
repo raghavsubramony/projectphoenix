@@ -143,6 +143,41 @@ class StudyIntegrationTest(unittest.TestCase):
         self.assertIn(label, {"EV", "Tier 1", "Tier 2", "Tier 3"})
         self.assertGreaterEqual(gen_w, 0.0)
 
+    def test_regressor_drives_hardware_tier(self) -> None:
+        """Document the actuation contract: the classifier only gates EV vs
+        charge-sustaining; the regressor's watt setpoint is what selects the
+        ATPE tier (``active_index``). This locks that behaviour so the closed-
+        loop A/B in ``main`` is interpreted correctly.
+        """
+        from digital_twin import PHASE1_BODIES, phase1_config_for
+        from digital_twin.powertrain import Powertrain
+        from digital_twin.drive_cycles import DriveCycles
+        from digital_twin.atpe import ATPE
+        from ml_study import LearnedController
+
+        study, _ = run_study(epochs=1, seed=0)
+        cfg = phase1_config_for(PHASE1_BODIES[0])
+        twin = Powertrain(cfg, controller=LearnedController(study))
+        cyc = DriveCycles.highway()
+        acc = cyc.accelerations()
+        # A reference ATPE with the same tier map to derive the expected tier
+        # purely from the commanded generation setpoint.
+        reference = ATPE(cfg.atpe)
+        engine_on_steps = 0
+        for i in range(len(cyc.speeds_ms)):
+            rec = twin.step(cyc.speeds_ms[i], acc[i], cyc.grades_rad[i], cyc.dt_s)
+            if rec.active_index < 0:
+                # EV: classifier gated the engine off.
+                self.assertEqual(rec.generation_w, 0.0)
+                continue
+            engine_on_steps += 1
+            # The engaged tier must be the one the ATPE derives from the
+            # *generation setpoint* (the regressor's output), proving the
+            # regressor - not the classifier - drives the hardware tier.
+            expected_index, _ = reference._governing_tier(rec.generation_w)
+            self.assertEqual(rec.active_index, expected_index)
+        self.assertGreater(engine_on_steps, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

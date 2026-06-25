@@ -816,3 +816,107 @@ Locked by `RegulatoryCycleTest` and `verify.py` (reconstructions match the publi
 fleet completes every cycle without shortfalls), reproduced in `main.py`. Pure stdlib.
 
 ---
+
+## Move J -- cold-start engine penalty
+
+Every fuel figure so far assumed a fully warm engine. A real free-piston generator, like any
+combustion engine, burns **richer while it warms up**: cold cylinder walls quench combustion,
+friction is higher and after-treatment is cold, so the first tens of seconds of engine running cost
+extra fuel. `coldstart.py` adds that as a **read-only post-processor**: it runs the ordinary warm
+charge-sustaining sim, then walks the per-step telemetry and adds a surcharge to each engine-on step
+that decays with the engine's *cumulative running time* (so intermittent running is handled):
+
+    excess(tau) = excess0 * exp(-tau / warmup_tau)
+
+The model is ambient-aware (it pairs with Move H): a colder start both raises the initial excess and
+lengthens the warm-up. Because the surcharge rides on an existing warm run, no validated number moves.
+
+```
+=== Cold-start fuel penalty (Mixed, -10C) ===
+  Body          Warm   Cold   Penalty  Engine-on
+  AWD SUV       2.41   2.88  +19.4%    143s
+  Sedan         0.41   0.62  +50.5%     35s
+  Pickup        4.52   4.84  + 7.0%    427s
+  Van / MPV     2.90   3.17  + 9.3%    372s
+```
+
+Findings: (1) **urban is pure-EV** -- the engine never starts, so the cold-start penalty is *zero*
+there; it is a long-trip / charge-sustaining phenomenon. (2) **Cold weather amplifies it.** (3) The
+light bodies show big percentages because their warm baseline is tiny (small denominator); the
+absolute litres are small. Locked by `ColdStartTest` and `verify.py`, reproduced in `main.py`.
+
+---
+
+## Move K -- payload and passenger loading
+
+The validated figures are quoted at kerb-plus-driver mass. Real vehicles carry people and cargo, and
+every kilogram raises rolling resistance, acceleration energy and grade load. `payload.py` sweeps the
+payload on top of the body sweep -- from driver-only to a full cabin (5 occupants at 75 kg) plus
+cargo -- re-running charge-sustaining fuel and re-checking the towing+grade capability. Each load
+point is a fresh copy of the validated config with only `mass_kg` raised, so the driver-only point
+reproduces the validated number.
+
+```
+=== Fleet payload sensitivity (driver-only -> full load) ===
+  Body          +kg full  Solo L  Full L  Penalty  Capable
+  AWD SUV          475    2.51    2.99  +19.3%   yes
+  Hatchback        475    0.37    0.48  +30.3%   yes
+  Crossover        475    1.13    1.59  +40.8%   yes
+  Pickup           475    4.62    5.18  +11.9%   yes
+```
+
+Findings: a full load (+475 kg) adds **12-41% fuel**, the largest *percentage* on the light bodies
+(smallest base mass), and **capability holds on the grade test for every body** -- the powertrain is
+not marginal once loaded. Locked by `PayloadTest` and `verify.py`, reproduced in `main.py`.
+
+---
+
+## Move L -- grid-charging (PHEV) economics
+
+Move D priced the architecture as a pure series hybrid (the engine supplies all trip energy). But the
+20 kWh pack is large enough to drive a meaningful distance on **grid electricity** if the owner plugs
+in. `phev.py` compares the two energy sources on the standard PHEV split (cf. SAE J2841): a
+charge-depleting (CD) range measured from a fully-electric urban run, a utility factor (the share of
+daily driving inside that range), and a UF-weighted blend of grid energy (priced and carbon-rated by
+`GridConfig`) against fuel (the Move-D figure).
+
+```
+=== Plug-in (PHEV) vs fuel-only economics (50 km/day) ===
+  Body          EV/100  Range   UF    Cost/km        CO2 g/km
+  AWD SUV       21.1     52  1.00  0.039->0.070     68->   70   (grid 0.30 kg/kWh)
+  Pickup        25.2     44  0.87  0.072->0.083    127->   90
+  AWD SUV       21.1     52  1.00  0.039->0.012     68->   12   (clean 0.05 kg/kWh)
+  Pickup        25.2     44  0.87  0.072->0.028    127->   28
+```
+
+The honest, slightly counter-intuitive finding: because the series hybrid is *already* fuel-thrifty,
+plugging into a dirty 0.30 kg/kWh grid at 0.30/kWh is roughly **CO2-neutral and cost-negative** -- the
+electricity displaces very little fuel. The CO2 win appears (a) for the **heavy fuel users** (Pickup
+127->90) and (b) **once the grid is clean** (SUV 68->12, Pickup 127->28). So the lever is grid
+cleanliness and fuel price, not merely the act of plugging in. Locked by `PhevGridTest` and
+`verify.py`, reproduced in `main.py`.
+
+---
+
+## Move M -- drivetrain degradation over life
+
+Every figure so far describes a *new* vehicle. Over 250,000 km the battery loses usable capacity, its
+internal resistance grows, and the driveline loses a little efficiency. `degradation.py` ages the
+drivetrain by a *life fraction* (0 = new, 1 = end of life): capacity fades toward -20%, resistance
+rises +50%, driveline efficiency drops 3 points. Each life point is a fresh copy of the validated
+config, so life fraction 0 reproduces the validated figures exactly.
+
+```
+=== Fleet drivetrain ageing (new -> end of life) ===
+  Body          Fuel new->EOL    Range new->EOL   Drift
+  AWD SUV       2.41-> 3.47       52->   40 km   +44.3% / -23.3%
+  Crossover     1.04-> 2.07       64->   49 km   +98.9% / -23.3%
+  Pickup        4.52-> 5.70       44->   33 km   +26.1% / -23.3%
+```
+
+Findings: **EV range fades a consistent ~23%** across all bodies (capacity-fade led), and **fuel
+drifts up** over life -- large in percent only on the light bodies (small denominator), modest in
+absolute litres. The new-vehicle point reproduces the validated fuel to six decimals, so nothing
+regresses. Locked by `DegradationTest` and `verify.py`, reproduced in `main.py`.
+
+---

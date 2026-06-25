@@ -142,8 +142,21 @@ def tco_for_body(cells: list[FleetCell], body: str,
     # vehicle life. Charge-sustaining keeps EFC/100km tiny, so this is ~0.
     pack_life_km = 0.0
     if efc_per_100km > 0:
-        # 4000-EFC rating is the durability default; recover km from EFC/100km.
-        pack_life_km = 4000.0 / efc_per_100km * 100.0
+        # Recover the pack's configured cycle-life rating from the simulated
+        # cells (each cell's projected_pack_life_km was computed from the twin's
+        # actual cfg.battery.cycle_life_efc), instead of hardcoding the default.
+        # This keeps the TCO replacement count consistent with the per-cycle
+        # durability reports even for custom (non-4000-EFC) pack configs.
+        rating_efc = 0.0
+        for c in by_cycle.values():
+            if c.battery_efc_per_100km > 0 and c.projected_pack_life_km > 0:
+                # projected_pack_life_km is stored in thousands of km.
+                rating_efc = (c.projected_pack_life_km * 1000.0 / 100.0
+                              * c.battery_efc_per_100km)
+                break
+        if rating_efc <= 0:
+            rating_efc = 4000.0  # fallback if durability wasn't rated
+        pack_life_km = rating_efc / efc_per_100km * 100.0
     replacements = int(km // pack_life_km) if pack_life_km > 0 else 0
 
     fuel_cost = lifetime_fuel_l * econ.fuel_price_per_l

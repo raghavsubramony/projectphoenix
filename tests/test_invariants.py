@@ -17,7 +17,6 @@ from digital_twin import (
     rotor_transient_power_w,
     phase1_config,
     phase1_config_for,
-    phase1_variants,
     PHASE1_BODIES,
     build_body_twins,
     evaluate,
@@ -26,6 +25,7 @@ from digital_twin import (
     charge_sustaining_bodies,
     stress_bodies,
     closed_loop_rotor_bodies,
+    stress_unmet_launch_kj,
     ClosedLoopRotorController,
     DriveCycles,
 )
@@ -42,7 +42,6 @@ from digital_twin.config import (
     KWH_TO_J,
     KW,
 )
-from digital_twin.simulation import run
 
 
 class RotorWhitepaperTest(unittest.TestCase):
@@ -214,29 +213,10 @@ class RotorScalingTest(unittest.TestCase):
     under a constrained (cold) battery as the reservoir grows.
     """
 
-    @staticmethod
-    def _unmet_kj(coupled: bool, energy_scale: float) -> float:
-        cfg = phase1_config_for(PHASE1_BODIES[0], rotor_coupled=coupled)
-        buf = replace(cfg.buffer,
-                      max_energy_j=cfg.buffer.max_energy_j * energy_scale)
-        cfg = replace(
-            cfg, buffer=buf,
-            atpe=replace(cfg.atpe, max_slew_w_per_s=60_000.0),
-            battery=replace(cfg.battery, max_discharge_w=40_000.0,
-                            initial_soc=cfg.battery.soc_target))
-        tw = Powertrain(cfg)
-        cyc = DriveCycles.transient_stress(dt_s=0.2)
-        acc = cyc.accelerations()
-        unmet = 0.0
-        for i in range(len(cyc.speeds_ms)):
-            r = tw.step(cyc.speeds_ms[i], acc[i], cyc.grades_rad[i], cyc.dt_s)
-            unmet += r.shortfall_w * cyc.dt_s
-        return unmet / 1000.0
-
     def test_scaling_reservoir_cuts_unmet_energy(self) -> None:
-        small = self._unmet_kj(coupled=True, energy_scale=1.0)
-        mid = self._unmet_kj(coupled=True, energy_scale=2.0)
-        big = self._unmet_kj(coupled=True, energy_scale=3.0)
+        small = stress_unmet_launch_kj(coupled=True, energy_scale=1.0)
+        mid = stress_unmet_launch_kj(coupled=True, energy_scale=2.0)
+        big = stress_unmet_launch_kj(coupled=True, energy_scale=3.0)
         self.assertGreater(small, mid)
         self.assertGreater(mid, big)
         # The 6-rotor-class reservoir cuts unmet energy by at least 40%.
@@ -287,6 +267,21 @@ class PluggableControllerTest(unittest.TestCase):
         self.assertGreater(res.equiv_fuel_l_per_100km, 0.0)
 
 
+class SimulationConventionTest(unittest.TestCase):
+    """Lock the integration convention: one simulated step per speed sample."""
+
+    def test_duration_matches_record_count(self) -> None:
+        # The runner steps once per speed sample (n*dt of simulated time), and
+        # distance/fuel integrate over those same n steps, so the reported
+        # duration must equal len(records) * dt - not (n-1)*dt.
+        cfg = phase1_config_for(PHASE1_BODIES[0])
+        cyc = DriveCycles.highway()
+        res = run(Powertrain(cfg), cyc)
+        self.assertEqual(len(res.records), len(cyc.speeds_ms))
+        self.assertAlmostEqual(res.duration_s, len(res.records) * cyc.dt_s,
+                               places=9)
+
+
 class ThermalDurabilityTest(unittest.TestCase):
     """Battery thermal model + durability accounting (Move B)."""
 
@@ -306,7 +301,7 @@ class ThermalDurabilityTest(unittest.TestCase):
             b.exchange(100 * KW, 1.0)
         self.assertEqual(b.temperature_c, 25.0)
         self.assertEqual(b.heat_loss_j, 0.0)
-        self.assertAlmostEqual(b._derate_factor(), 1.0)
+        self.assertAlmostEqual(b.derate_factor(), 1.0)
 
     def test_thermal_heats_and_derates_under_abuse(self) -> None:
         th = BatteryThermalConfig(thermal_mass_j_per_k=8000.0,
@@ -323,11 +318,11 @@ class ThermalDurabilityTest(unittest.TestCase):
         # The pack must heat past the derate threshold and clamp its output.
         self.assertGreater(b.peak_temperature_c, th.derate_start_c)
         self.assertGreater(b.heat_loss_j, 0.0)
-        self.assertLess(b._derate_factor(), 1.0)
+        self.assertLess(b.derate_factor(), 1.0)
         self.assertLess(delivered, delivered_first)
         # Derating must never fall below the configured floor authority.
         self.assertGreaterEqual(
-            b._derate_factor(), th.floor_fraction - 1e-9)
+            b.derate_factor(), th.floor_fraction - 1e-9)
 
     def test_efc_accounting_matches_throughput(self) -> None:
         b = self._plain_battery()
@@ -728,6 +723,136 @@ class ExecutiveSummaryTest(unittest.TestCase):
         self.assertEqual(suv.body, "AWD SUV")
         self.assertAlmostEqual(suv.battery_power_kw, 90.0, delta=0.1)
         self.assertIn("executive summary", s.report())
+
+
+class ColdStartTest(unittest.TestCase):
+    """Move J: the cold-start surcharge only adds fuel where the engine runs,
+    grows with cold, decays with run time, and never touches warm figures."""
+
+    def test_pure_ev_cycle_has_no_cold_start_penalty(self) -> None:
+        from digital_twin import cold_start_for, DriveCycles, PHASE1_BODIES
+        # Urban is fully electric (engine never on) -> zero penalty.
+        r = cold_start_for(PHASE1_BODIES[0], DriveCycles.urban(), ambient_c=-10)
+        self.assertEqual(r.engine_on_s, 0.0)
+        self.assertAlmostEqual(r.penalty_l, 0.0, places=9)
+        self.assertAlmostEqual(r.penalty_pct, 0.0, places=6)
+
+    def test_engine_on_cycle_has_a_positive_penalty(self) -> None:
+        from digital_twin import cold_start_for, DriveCycles, PHASE1_BODIES
+        r = cold_start_for(PHASE1_BODIES[0], DriveCycles.mixed(), ambient_c=20)
+        self.assertGreater(r.engine_on_s, 0.0)
+        self.assertGreater(r.penalty_l, 0.0)
+        self.assertGreater(r.cold_fuel_l_per_100km, r.warm_fuel_l_per_100km)
+
+    def test_colder_start_raises_the_penalty(self) -> None:
+        from digital_twin import cold_start_for, DriveCycles, PHASE1_BODIES
+        warm = cold_start_for(PHASE1_BODIES[0], DriveCycles.mixed(), 20)
+        cold = cold_start_for(PHASE1_BODIES[0], DriveCycles.mixed(), -10)
+        self.assertGreater(cold.penalty_l, warm.penalty_l)
+
+    def test_warm_figure_is_never_regressed(self) -> None:
+        from digital_twin import cold_start_for, DriveCycles, PHASE1_BODIES
+        from digital_twin import phase1_config_for, Powertrain, run
+        from dataclasses import replace
+        body = PHASE1_BODIES[0]
+        base = phase1_config_for(body)
+        cs = replace(base, battery=replace(base.battery,
+                                           initial_soc=base.battery.soc_target))
+        validated = run(Powertrain(cs), DriveCycles.mixed()).fuel_l_per_100km
+        r = cold_start_for(body, DriveCycles.mixed(), 20)
+        self.assertAlmostEqual(r.warm_fuel_l_per_100km, validated, places=6)
+
+
+class PayloadTest(unittest.TestCase):
+    """Move K: adding occupants and cargo raises fuel monotonically while
+    capability holds, and the driver-only point reproduces the validated fuel."""
+
+    def test_more_payload_means_more_fuel(self) -> None:
+        from digital_twin import payload_sweep, PHASE1_BODIES
+        s = payload_sweep(PHASE1_BODIES[0])
+        fuels = [p.fuel_l_per_100km for p in s.points]
+        self.assertEqual(fuels, sorted(fuels))
+        self.assertGreater(s.full.fuel_l_per_100km, s.baseline.fuel_l_per_100km)
+        self.assertGreater(s.full_penalty_pct, 0.0)
+
+    def test_baseline_matches_the_validated_fuel(self) -> None:
+        from digital_twin import payload_sweep, PHASE1_BODIES, DriveCycles
+        from digital_twin import phase1_config_for, Powertrain, run
+        from dataclasses import replace
+        body = PHASE1_BODIES[0]
+        base = phase1_config_for(body)
+        # Driver-only adds one occupant; compare against same +75 kg config.
+        veh = replace(base.vehicle, mass_kg=base.vehicle.mass_kg + 75.0)
+        cfg = replace(base, vehicle=veh,
+                      battery=replace(base.battery,
+                                      initial_soc=base.battery.soc_target))
+        expected = run(Powertrain(cfg), DriveCycles.mixed()).fuel_l_per_100km
+        s = payload_sweep(body)
+        self.assertAlmostEqual(s.baseline.fuel_l_per_100km, expected, places=6)
+
+    def test_capability_holds_under_full_load(self) -> None:
+        from digital_twin import fleet_payload
+        for s in fleet_payload():
+            self.assertTrue(s.stays_capable)
+
+
+class PhevGridTest(unittest.TestCase):
+    """Move L: the plug-in model produces a sane CD range and utility factor,
+    and a cleaner grid always lowers electric CO2."""
+
+    def test_cd_range_and_utility_factor_are_sane(self) -> None:
+        from digital_twin import phev_for_body, PHASE1_BODIES
+        r = phev_for_body(PHASE1_BODIES[0])
+        self.assertGreater(r.ev_kwh_per_100km, 0.0)
+        self.assertGreater(r.cd_range_km, 0.0)
+        self.assertGreaterEqual(r.utility_factor, 0.0)
+        self.assertLessEqual(r.utility_factor, 1.0)
+
+    def test_cleaner_grid_lowers_phev_co2(self) -> None:
+        from digital_twin import phev_for_body, GridConfig, PHASE1_BODIES
+        dirty = phev_for_body(PHASE1_BODIES[0],
+                              grid=GridConfig(grid_co2_kg_per_kwh=0.40))
+        clean = phev_for_body(PHASE1_BODIES[0],
+                              grid=GridConfig(grid_co2_kg_per_kwh=0.05))
+        self.assertLess(clean.phev_co2_g_per_km, dirty.phev_co2_g_per_km)
+
+    def test_shorter_commute_raises_or_holds_utility_factor(self) -> None:
+        from digital_twin import phev_for_body, GridConfig, PHASE1_BODIES
+        far = phev_for_body(PHASE1_BODIES[4], grid=GridConfig(daily_km=100))
+        near = phev_for_body(PHASE1_BODIES[4], grid=GridConfig(daily_km=20))
+        self.assertGreaterEqual(near.utility_factor, far.utility_factor)
+
+
+class DegradationTest(unittest.TestCase):
+    """Move M: ageing raises fuel and shrinks EV range monotonically, and the
+    new-vehicle point reproduces the validated figures exactly."""
+
+    def test_new_point_matches_validated_fuel(self) -> None:
+        from digital_twin import degradation_for, PHASE1_BODIES, DriveCycles
+        from digital_twin import phase1_config_for, Powertrain, run
+        from dataclasses import replace
+        body = PHASE1_BODIES[0]
+        base = phase1_config_for(body)
+        cs = replace(base, battery=replace(base.battery,
+                                           initial_soc=base.battery.soc_target))
+        validated = run(Powertrain(cs), DriveCycles.mixed()).fuel_l_per_100km
+        c = degradation_for(body)
+        self.assertAlmostEqual(c.new.fuel_l_per_100km, validated, places=6)
+
+    def test_ageing_raises_fuel_and_cuts_range(self) -> None:
+        from digital_twin import degradation_for, PHASE1_BODIES
+        c = degradation_for(PHASE1_BODIES[0])
+        fuels = [p.fuel_l_per_100km for p in c.points]
+        ranges = [p.ev_range_km for p in c.points]
+        self.assertEqual(fuels, sorted(fuels))
+        self.assertEqual(ranges, sorted(ranges, reverse=True))
+        self.assertGreater(c.fuel_drift_pct, 0.0)
+        self.assertGreater(c.range_loss_pct, 0.0)
+
+    def test_every_body_loses_range_over_life(self) -> None:
+        from digital_twin import fleet_degradation
+        for c in fleet_degradation():
+            self.assertGreater(c.range_loss_pct, 0.0)
 
 
 if __name__ == "__main__":

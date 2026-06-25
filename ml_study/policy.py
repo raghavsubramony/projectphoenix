@@ -62,8 +62,15 @@ class LearnedController:
         if decision == 0:
             return ControlState("EV", 0.0, demand_w)
 
-        # Engine on: take the regressor's setpoint, floored to cover the spike
-        # so the engine assists the buffers instead of trailing the estimate.
+        # Engine on. NOTE: the classifier's tier magnitude (1/2/3) only gates
+        # EV vs charge-sustaining here; it does NOT directly select the ATPE
+        # tier. The *regressor's* watt setpoint drives the hardware - the ATPE
+        # picks the smallest tier set that covers it (see ATPE._governing_tier).
+        # So the engaged `active_index` is determined by `gen_w`, and may differ
+        # from `decision - 1`. Training labels come from the actual engaged tier
+        # (`active_index + 1`), so the two stay correlated, but the regressor is
+        # the authoritative actuator. Floor the setpoint to cover a spike so the
+        # engine assists the buffers instead of trailing the estimate.
         _, gen_w = self.study.predict_decision(obs)
         if self.spike_threshold_w is not None and demand_w > self.spike_threshold_w:
             gen_w = max(gen_w, min(demand_w, max_generation_w))

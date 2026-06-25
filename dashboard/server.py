@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import time
 import unittest
 import webbrowser
@@ -124,6 +125,15 @@ def _simulate(cycle_name: str, body_name: str, coupled: bool) -> dict:
 
 
 # --- test runner -> JSON ----------------------------------------------------
+
+# The test suite is CPU-heavy (~tens of seconds). This server binds to
+# localhost by default, but the ThreadingHTTPServer would still let concurrent
+# /api/tests requests pile up overlapping suite runs and exhaust the CPU. This
+# non-reentrant lock serialises runs so at most one suite executes at a time;
+# callers that arrive while a run is in flight get HTTP 429 instead of spawning
+# another run.
+_TEST_RUN_LOCK = threading.Lock()
+
 
 class _JSONResult(unittest.TestResult):
     """Collects per-test outcomes with timing for the dashboard."""
@@ -257,7 +267,15 @@ class _Handler(BaseHTTPRequestHandler):
                 coupled = (query.get("coupled") or ["0"])[0] in ("1", "true", "on")
                 self._send_json(_simulate(cycle, body, coupled))
             elif route == "/api/tests":
-                self._send_json(_run_tests())
+                if not _TEST_RUN_LOCK.acquire(blocking=False):
+                    self._send_json(
+                        {"error": "a test run is already in progress"},
+                        status=429)
+                else:
+                    try:
+                        self._send_json(_run_tests())
+                    finally:
+                        _TEST_RUN_LOCK.release()
             else:
                 self._send_json({"error": "not found"}, status=404)
         except KeyError as exc:
