@@ -1,0 +1,118 @@
+"""Powertrain orchestrator: integrates every subsystem over one timestep."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .atpe import ATPE
+from .battery import Battery
+from .config import TwinConfig
+from .controller import UnifiedController
+from .pcmritms import InertialBuffer
+from .vehicle import Vehicle
+
+
+@dataclass
+class StepResult:
+    """Telemetry for a single simulation step (all powers in watts)."""
+
+    time_s: float
+    speed_ms: float
+    demand_w: float
+    generation_w: float
+    buffer_w: float          # + = buffer discharging to bus
+    battery_w: float         # + = battery discharging to bus
+    shortfall_w: float       # unmet traction demand (capability limit)
+    surplus_w: float         # generation that could not be stored
+    mode: str
+    active_tier: str
+    active_index: int
+    efficiency: float
+    fuel_l: float
+    co2_kg: float
+    battery_soc: float
+    buffer_soc: float
+
+
+class Powertrain:
+    """The digital twin. Call `step` repeatedly, or use `simulation.run`."""
+
+    def __init__(self, cfg: TwinConfig, controller=None) -> None:
+        self.cfg = cfg
+        self.vehicle = Vehicle(cfg.vehicle)
+        self.atpe = ATPE(cfg.atpe)
+        self.buffer = InertialBuffer(cfg.buffer)
+        self.battery = Battery(cfg.battery)
+        # The control policy is pluggable: any object exposing the same
+        # `decide(...) -> ControlState` interface works (e.g. a learned policy).
+        # Defaults to the rule-based UnifiedController.
+        self.controller = controller or UnifiedController(
+            cfg.control,
+            battery_soc_target=cfg.battery.soc_target,
+            battery_soc_ev_floor=cfg.battery.soc_ev_floor,
+        )
+        self.time_s = 0.0
+
+    def step(self, speed_ms: float, accel_ms2: float, grade_rad: float,
+             dt_s: float) -> StepResult:
+        # 1) Vehicle demand on the DC bus.
+        demand_w = self.vehicle.power_demand_w(speed_ms, accel_ms2, grade_rad)
+
+        # 2) Controller decides mode + generation setpoint (Loops A & B).
+        ctrl = self.controller.decide(
+            demand_w, self.battery.soc, self.atpe.max_electric_w, dt_s,
+            speed_ms=speed_ms, buffer_soc=self.buffer.state_of_charge)
+
+        # 3) ATPE generates toward the setpoint.
+        gen = self.atpe.generate(ctrl.gen_setpoint_w, dt_s)
+
+        # 4) Loop C: arbitrate the mismatch between demand and generation.
+        mismatch_w = demand_w - gen.electric_w
+        buffer_w = 0.0
+        battery_w = 0.0
+        shortfall_w = 0.0
+        surplus_w = 0.0
+
+        if mismatch_w > 0.0:
+            # Deficit: buffer first (fastest), then battery, then flag shortfall.
+            buffer_w = self.buffer.exchange(mismatch_w, dt_s,
+                                            burst_cap_w=ctrl.buffer_burst_w)
+            remaining = mismatch_w - buffer_w
+            battery_w = self.battery.exchange(remaining, dt_s)
+            shortfall_w = max(0.0, remaining - battery_w)
+        elif mismatch_w < 0.0:
+            # Surplus: refill buffer toward target first, then charge battery.
+            surplus = -mismatch_w
+            buffer_headroom_target = max(
+                0.0,
+                self.cfg.control.buffer_soc_target - self.buffer.state_of_charge,
+            )
+            # Only divert to the buffer if it is below its keep-full target.
+            if buffer_headroom_target > 0.0:
+                absorbed = -self.buffer.exchange(-surplus, dt_s)
+                buffer_w = -absorbed
+                surplus -= absorbed
+            charged = -self.battery.exchange(-surplus, dt_s)
+            battery_w = -charged
+            surplus -= charged
+            surplus_w = max(0.0, surplus)
+
+        self.time_s += dt_s
+        return StepResult(
+            time_s=self.time_s,
+            speed_ms=speed_ms,
+            demand_w=demand_w,
+            generation_w=gen.electric_w,
+            buffer_w=buffer_w,
+            battery_w=battery_w,
+            shortfall_w=shortfall_w,
+            surplus_w=surplus_w,
+            mode=ctrl.mode,
+            active_tier=gen.active_tier,
+            active_index=gen.active_index,
+            efficiency=gen.efficiency,
+            fuel_l=gen.fuel_l,
+            co2_kg=gen.co2_kg,
+            battery_soc=self.battery.soc,
+            buffer_soc=self.buffer.state_of_charge,
+        )

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project Phoenix - Live Twin Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">&#9650;</span>
+      <div>
+        <h1>Project Phoenix</h1>
+        <p>ATPE + PCMRITMS digital twin &mdash; live cluster &amp; test view</p>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="sim">Simulator</button>
+      <button class="tab" data-tab="tests">Test Bench</button>
+    </nav>
+  </header>
+
+  <!-- ============================ SIMULATOR ============================ -->
+  <main id="tab-sim" class="tab-panel active">
+    <section class="controls">
+      <label>
+        <span>Vehicle body</span>
+        <select id="body"></select>
+      </label>
+      <label>
+        <span>Drive cycle</span>
+        <select id="cycle"></select>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="coupled" />
+        <span>PCMRITMS rotor coupling</span>
+      </label>
+      <label>
+        <span>Speed &times;<b id="speedMul">8</b></span>
+        <input type="range" id="speed" min="1" max="40" value="8" />
+      </label>
+      <div class="btns">
+        <button id="play" class="primary">&#9658; Run</button>
+        <button id="pause" disabled>&#10073;&#10073; Pause</button>
+        <button id="reset">&#8635; Reset</button>
+      </div>
+      <p id="cycleDesc" class="hint"></p>
+    </section>
+
+    <section class="cluster">
+      <div class="gauge-card">
+        <canvas id="speedo" width="320" height="320"></canvas>
+        <div class="tier-badge" id="tierBadge">EV</div>
+      </div>
+
+      <div class="flow-card">
+        <h3>Power flow</h3>
+        <div class="bar"><label>Demand</label><div class="track"><div class="fill demand" id="barDemand"></div></div><span id="valDemand">0 kW</span></div>
+        <div class="bar"><label>ATPE gen</label><div class="track"><div class="fill gen" id="barGen"></div></div><span id="valGen">0 kW</span></div>
+        <div class="bar"><label>Buffer</label><div class="track center"><div class="fill buffer" id="barBuffer"></div></div><span id="valBuffer">0 kW</span></div>
+        <div class="bar"><label>Battery</label><div class="track center"><div class="fill battery" id="barBattery"></div></div><span id="valBattery">0 kW</span></div>
+        <div class="bar"><label>Shortfall</label><div class="track"><div class="fill shortfall" id="barShortfall"></div></div><span id="valShortfall">0 kW</span></div>
+      </div>
+
+      <div class="soc-card">
+        <h3>Energy stores</h3>
+        <div class="soc">
+          <div class="soc-tube"><div class="soc-level battery-soc" id="socBattery"></div></div>
+          <label>Battery <span id="valSocBattery">--%</span></label>
+        </div>
+        <div class="soc">
+          <div class="soc-tube"><div class="soc-level buffer-soc" id="socBuffer"></div></div>
+          <label>Buffer <span id="valSocBuffer">--%</span></label>
+        </div>
+        <div class="clock">
+          <div><span class="big" id="clockT">0.0</span> s</div>
+          <div><span class="big" id="clockDist">0.00</span> km</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="trace-card">
+      <canvas id="trace" width="1200" height="240"></canvas>
+      <div class="legend">
+        <span class="k speed">Speed</span>
+        <span class="k demand">Demand</span>
+        <span class="k gen">Generation</span>
+        <span class="k buffer">Buffer</span>
+      </div>
+    </section>
+
+    <section class="summary-card" id="summaryCard" hidden>
+      <h3>Run summary</h3>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </section>
+  </main>
+
+  <!-- ============================ TESTS ============================ -->
+  <main id="tab-tests" class="tab-panel">
+    <section class="controls">
+      <button id="runTests" class="primary">&#9658; Run test suite</button>
+      <div class="test-tally" id="testTally"></div>
+    </section>
+    <section class="tests-grid" id="testsGrid">
+      <p class="hint">Run the suite to see each invariant validate live.</p>
+    </section>
+  </main>
+
+  <footer class="footer">Pure-stdlib dashboard &bull; data straight from the digital twin</footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

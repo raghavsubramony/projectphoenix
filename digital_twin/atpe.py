@@ -1,0 +1,90 @@
+"""ATPE: three-tier free-piston linear generator with additive tier selection."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .config import (
+    ATPEConfig,
+    GASOLINE_CO2_KG_PER_L,
+    GASOLINE_DENSITY_KG_PER_L,
+    GASOLINE_LHV_MJ_PER_KG,
+    TierSpec,
+)
+
+_LHV_J_PER_KG = GASOLINE_LHV_MJ_PER_KG * 1e6
+
+
+@dataclass
+class GenerationResult:
+    electric_w: float       # electrical power actually generated
+    fuel_power_w: float     # chemical power consumed
+    fuel_l: float           # fuel volume consumed this step
+    co2_kg: float           # tailpipe CO2 this step
+    active_tier: str        # name of the governing (largest active) tier
+    active_index: int       # -1 = engine off, else tier index
+    efficiency: float       # instantaneous thermal efficiency (0 if off)
+
+
+class ATPE:
+    """Free-piston generator. Picks the smallest tier set covering the setpoint."""
+
+    def __init__(self, cfg: ATPEConfig) -> None:
+        self.cfg = cfg
+        # Cumulative capacity when tiers 0..i are all active.
+        self._cumulative: list[float] = []
+        running = 0.0
+        for tier in cfg.tiers:
+            running += tier.max_electric_w
+            self._cumulative.append(running)
+        # Last delivered electrical output, for the optional ramp-rate limit.
+        self._prev_electric_w = 0.0
+
+    @property
+    def max_electric_w(self) -> float:
+        return self.cfg.max_electric_w
+
+    def _governing_tier(self, setpoint_w: float) -> tuple[int, TierSpec | None]:
+        """Smallest cumulative tier set whose capacity covers the setpoint."""
+        if setpoint_w <= 0.0:
+            return -1, None
+        for i, cap in enumerate(self._cumulative):
+            if setpoint_w <= cap + 1e-6:
+                return i, self.cfg.tiers[i]
+        # Exceeds total capacity: run everything, governed by the top tier.
+        top = len(self.cfg.tiers) - 1
+        return top, self.cfg.tiers[top]
+
+    def generate(self, setpoint_w: float, dt_s: float) -> GenerationResult:
+        """Generate electricity toward `setpoint_w`, returning fuel/emissions."""
+        setpoint_w = max(0.0, min(setpoint_w, self.max_electric_w))
+        # Optional ramp-rate limit: the generator can only chase the setpoint as
+        # fast as `max_slew_w_per_s`. This is what makes the inertial buffer
+        # necessary during transients instead of merely convenient.
+        slew = self.cfg.max_slew_w_per_s
+        if slew is not None:
+            max_step = slew * dt_s
+            if setpoint_w > self._prev_electric_w + max_step:
+                setpoint_w = self._prev_electric_w + max_step
+            elif setpoint_w < self._prev_electric_w - max_step:
+                setpoint_w = self._prev_electric_w - max_step
+        self._prev_electric_w = setpoint_w
+        index, tier = self._governing_tier(setpoint_w)
+        if tier is None or setpoint_w <= 0.0:
+            return GenerationResult(0.0, 0.0, 0.0, 0.0, "engine off", -1, 0.0)
+
+        electric_w = setpoint_w
+        fuel_power_w = electric_w / tier.thermal_efficiency
+        fuel_energy_j = fuel_power_w * dt_s
+        fuel_kg = fuel_energy_j / _LHV_J_PER_KG
+        fuel_l = fuel_kg / GASOLINE_DENSITY_KG_PER_L
+        co2_kg = fuel_l * GASOLINE_CO2_KG_PER_L
+        return GenerationResult(
+            electric_w=electric_w,
+            fuel_power_w=fuel_power_w,
+            fuel_l=fuel_l,
+            co2_kg=co2_kg,
+            active_tier=tier.name,
+            active_index=index,
+            efficiency=tier.thermal_efficiency,
+        )
