@@ -13,6 +13,8 @@ This folder captures the engineering concept, analysis, and business case for an
 
 | File | Contents |
 |------|----------|
+| [PROJECT-STATUS-AND-NEXT-STEPS.md](PROJECT-STATUS-AND-NEXT-STEPS.md) | **Plain-English status report** — where the project stands vs the plan, what is done, what comes next |
+| [PLAIN-ENGLISH-OVERVIEW.md](PLAIN-ENGLISH-OVERVIEW.md) | No-jargon tour of Moves A–M and what we proved |
 | [01-atpe-concept.md](01-atpe-concept.md) | ATPE concept analysis — architecture, tiers, free-piston generation, AI logic, efficiency, challenges |
 | [02-pcmritms-opinion.md](02-pcmritms-opinion.md) | Opinion on the PCMRITMS inertial torque buffer concept |
 | [03-integration-viability.md](03-integration-viability.md) | Viability of integrating ATPE + PCMRITMS into one powertrain |
