@@ -32,6 +32,10 @@ class StepResult:
     co2_kg: float
     battery_soc: float
     buffer_soc: float
+    imep_bar: float = 0.0
+    knock_index: float = 0.0
+    peak_pressure_bar: float = 0.0
+    predicted_tdc_mm: float = 0.0
 
 
 class Powertrain:
@@ -115,4 +119,8 @@ class Powertrain:
             co2_kg=gen.co2_kg,
             battery_soc=self.battery.soc,
             buffer_soc=self.buffer.state_of_charge,
+            imep_bar=gen.imep_bar,
+            knock_index=gen.knock_index,
+            peak_pressure_bar=gen.peak_pressure_bar,
+            predicted_tdc_mm=gen.predicted_tdc_mm,
         )

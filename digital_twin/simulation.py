@@ -48,6 +48,10 @@ class Result:
     buffer_min_soc: float = 1.0    # lowest reservoir level seen (reserve health)
     shortfall_events: int = 0
     max_shortfall_kw: float = 0.0
+    mean_imep_bar: float = 0.0
+    mean_knock_index: float = 0.0
+    peak_cylinder_pressure_bar: float = 0.0
+    min_predicted_tdc_mm: float = 0.0
 
     def report(self) -> str:
         lines = [
@@ -79,6 +83,9 @@ class Result:
                 f"{k} {v*100:.0f}%" for k, v in self.mode_share.items()),
             f"  Capability shortfall: {self.shortfall_events} steps, "
             f"max {self.max_shortfall_kw:.1f} kW",
+            f"  Gate 1 combustion    : IMEP {self.mean_imep_bar:.2f} bar, "
+            f"knock idx {self.mean_knock_index:.2f}, "
+            f"peak P {self.peak_cylinder_pressure_bar:.1f} bar",
         ]
         return "\n".join(lines)
 
@@ -105,6 +112,12 @@ def run(twin: Powertrain, cycle: DriveCycle) -> Result:
     battery_peak_w = 0.0
     shortfall_events = 0
     max_shortfall_w = 0.0
+    imep_weighted = 0.0
+    knock_weighted = 0.0
+    gate1_weight = 0.0
+    peak_cylinder_pressure_bar = 0.0
+    min_predicted_tdc_mm = 0.0
+    seen_gate1 = False
 
     for i, speed in enumerate(cycle.speeds_ms):
         rec = twin.step(speed, accels[i], cycle.grades_rad[i], dt)
@@ -135,6 +148,19 @@ def run(twin: Powertrain, cycle: DriveCycle) -> Result:
         if rec.shortfall_w > 1.0:
             shortfall_events += 1
             max_shortfall_w = max(max_shortfall_w, rec.shortfall_w)
+
+        if rec.generation_w > 0.0 and rec.imep_bar > 0.0:
+            seen_gate1 = True
+            imep_weighted += rec.imep_bar * rec.generation_w * dt
+            knock_weighted += rec.knock_index * rec.generation_w * dt
+            gate1_weight += rec.generation_w * dt
+            peak_cylinder_pressure_bar = max(
+                peak_cylinder_pressure_bar, rec.peak_pressure_bar)
+            if not min_predicted_tdc_mm:
+                min_predicted_tdc_mm = rec.predicted_tdc_mm
+            else:
+                min_predicted_tdc_mm = min(
+                    min_predicted_tdc_mm, rec.predicted_tdc_mm)
 
     n = len(cycle.speeds_ms)
     result.distance_km = distance_m / 1000.0
@@ -189,4 +215,9 @@ def run(twin: Powertrain, cycle: DriveCycle) -> Result:
         if rating and result.battery_efc_per_100km > 0 else 0.0)
     result.shortfall_events = shortfall_events
     result.max_shortfall_kw = max_shortfall_w / _KW
+    if seen_gate1 and gate1_weight > 0.0:
+        result.mean_imep_bar = imep_weighted / gate1_weight
+        result.mean_knock_index = knock_weighted / gate1_weight
+        result.peak_cylinder_pressure_bar = peak_cylinder_pressure_bar
+        result.min_predicted_tdc_mm = min_predicted_tdc_mm
     return result

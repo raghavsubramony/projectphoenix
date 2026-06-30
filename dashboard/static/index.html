@@ -17,6 +17,7 @@
     </div>
     <nav class="tabs">
       <button class="tab active" data-tab="sim">Simulator</button>
+      <button class="tab" data-tab="gates">Gates</button>
       <button class="tab" data-tab="tests">Test Bench</button>
     </nav>
   </header>
@@ -35,6 +36,10 @@
       <label class="toggle">
         <input type="checkbox" id="coupled" />
         <span>PCMRITMS rotor coupling</span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="gate1" checked />
+        <span>Gate 1 combustion (per-tier physics)</span>
       </label>
       <label>
         <span>Speed &times;<b id="speedMul">8</b></span>
@@ -90,9 +95,92 @@
       </div>
     </section>
 
+    <section class="combustion-live-card" id="combustionLiveCard">
+      <div class="combustion-live-head">
+        <h3>Live combustion — follows active tier</h3>
+        <span class="combustion-live-tier" id="liveCombTier">—</span>
+      </div>
+      <div class="combustion-live-grid">
+        <div class="cad-viz-column">
+          <span class="mini-label">Cylinder cutaway (free-piston module)</span>
+          <canvas id="liveCylinder" width="280" height="300"></canvas>
+          <div class="cad-readout" id="liveCadReadout"></div>
+          <label class="crank-scrub">
+            <span>Cycle angle <b id="crankScrubVal">0</b>&deg;</span>
+            <input type="range" id="crankScrub" min="-180" max="180" value="0" step="1" />
+          </label>
+        </div>
+        <div class="combustion-metrics" id="liveCombMetrics"></div>
+        <div class="combustion-charts">
+          <div class="mini-chart-wrap">
+            <span class="mini-label">P-V (active tier)</span>
+            <canvas id="livePv" width="420" height="220"></canvas>
+          </div>
+          <div class="mini-chart-wrap">
+            <span class="mini-label">Pressure vs crank</span>
+            <canvas id="livePressure" width="420" height="220"></canvas>
+          </div>
+        </div>
+      </div>
+      <p class="hint" id="liveCombHint">Enable Gate 1 and run a cycle where the engine starts (Highway / Mixed).</p>
+    </section>
+
     <section class="summary-card" id="summaryCard" hidden>
       <h3>Run summary</h3>
       <div class="summary-grid" id="summaryGrid"></div>
+    </section>
+  </main>
+
+  <!-- ============================ GATES ============================ -->
+  <main id="tab-gates" class="tab-panel">
+    <section class="controls">
+      <p class="hint" id="gateStatusText">
+        Run a simulation in the Simulator tab to populate Gate 1 visualizations.
+      </p>
+    </section>
+
+    <nav class="tier-tabs" id="gateTierTabs" aria-label="ATPE cylinder tiers"></nav>
+
+    <section class="gate-metrics" id="gate1Metrics"></section>
+
+    <section class="gate-grid">
+      <article class="gate-card cad-gate-card">
+        <h3>Cylinder cutaway — scrub through one combustion cycle</h3>
+        <p class="hint">Free-piston ATPE module: linear motion + bounce chamber (no crankshaft). Drag the slider or watch it animate during playback on the Simulator tab.</p>
+        <div class="cad-gate-layout">
+          <canvas id="gateCylinder" width="320" height="340"></canvas>
+          <div class="cad-gate-side">
+            <div class="cad-readout" id="gateCadReadout"></div>
+            <label class="crank-scrub">
+              <span>Crank angle <b id="gateCrankScrubVal">0</b>&deg;</span>
+              <input type="range" id="gateCrankScrub" min="-180" max="180" value="0" step="1" />
+            </label>
+          </div>
+        </div>
+      </article>
+      <article class="gate-card">
+        <h3>Pressure vs crank (selected tier) — marker shows cycle position</h3>
+        <canvas id="gate1Pressure" width="900" height="260"></canvas>
+      </article>
+      <article class="gate-card">
+        <h3>P-V diagram (selected tier) — marker tracks the same angle</h3>
+        <canvas id="gate1Pv" width="900" height="260"></canvas>
+      </article>
+      <article class="gate-card">
+        <h3>Live trend — IMEP / knock / TDC (engine-on steps)</h3>
+        <canvas id="gate1Trend" width="900" height="260"></canvas>
+      </article>
+    </section>
+
+    <section class="compare-card">
+      <h3>All cylinder types at a glance</h3>
+      <p class="hint">Each tier uses its own displacement, compression ratio, and free-piston geometry. Load is taken from the peak point seen for that tier in this run (or 65% design point if unused).</p>
+      <div class="compare-grid" id="gateCompareGrid"></div>
+    </section>
+
+    <section class="roadmap-card">
+      <h3>Gate Visualization Roadmap</h3>
+      <div class="roadmap-grid" id="gateRoadmap"></div>
     </section>
   </main>
 

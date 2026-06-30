@@ -105,7 +105,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   gap: 18px;
   margin-bottom: 18px;
 }
-.gauge-card, .flow-card, .soc-card, .trace-card, .summary-card {
+.gauge-card, .flow-card, .soc-card, .trace-card, .summary-card,
+.combustion-live-card, .compare-card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -125,6 +126,14 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   font-weight: 600;
   letter-spacing: 1px;
   font-size: 14px;
+}
+.tier-badge.tier-on {
+  border-color: #ffd166;
+  color: #ffd166;
+}
+.tier-badge.tier-cs {
+  border-color: #4ea8de;
+  color: #4ea8de;
 }
 
 .flow-card h3, .soc-card h3, .summary-card h3 { margin: 0 0 14px; font-size: 14px; color: var(--muted); font-weight: 600; }
@@ -158,10 +167,254 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .legend .buffer::before { background: var(--buffer); }
 
 .summary-card { margin-top: 18px; }
-.summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+
+.combustion-live-card { margin-top: 18px; }
+.combustion-live-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.combustion-live-head h3 { margin: 0; font-size: 14px; color: var(--muted); font-weight: 600; }
+.combustion-live-tier {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 4px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+}
+.combustion-live-grid {
+  display: grid;
+  grid-template-columns: 280px 200px 1fr;
+  gap: 16px;
+}
+.cad-viz-column canvas {
+  width: 100%;
+  height: 300px;
+  display: block;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #0d1219, #151c28);
+}
+.cad-readout {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.cad-readout strong { color: var(--txt); }
+.crank-scrub {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.crank-scrub input[type=range] { width: 100%; accent-color: var(--accent); }
+
+.cad-gate-card { grid-column: 1 / -1; }
+.cad-gate-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.cad-gate-layout canvas {
+  width: 100%;
+  max-width: 320px;
+  height: 340px;
+  display: block;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #0d1219, #151c28);
+}
+.cad-gate-side { padding-top: 8px; }
+
+@media (max-width: 1100px) {
+  .combustion-live-grid { grid-template-columns: 1fr; }
+  .cad-gate-layout { grid-template-columns: 1fr; }
+}
+.combustion-metrics .metric-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.combustion-metrics .metric-row span:first-child { color: var(--muted); }
+.combustion-metrics .metric-row span:last-child { font-variant-numeric: tabular-nums; }
+.combustion-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.mini-chart-wrap canvas {
+  width: 100%;
+  height: 220px;
+  display: block;
+  background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0));
+  border-radius: 10px;
+}
+.mini-label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.tier-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.tier-tab {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: .15s;
+}
+.tier-tab.active {
+  color: var(--txt);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+.tier-tab.unused { opacity: 0.55; }
+.tier-tab .sub { display: block; font-size: 10px; margin-top: 2px; opacity: 0.85; }
+
+.compare-card { margin-top: 16px; }
+.compare-card h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 600; }
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+.compare-item {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+}
+.compare-item.active-tier { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.compare-item h4 { margin: 0 0 4px; font-size: 13px; }
+.compare-item .meta { font-size: 11px; color: var(--muted); margin-bottom: 8px; line-height: 1.35; }
+.compare-item canvas {
+  width: 100%;
+  height: 160px;
+  display: block;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.15);
+}
+.compare-item .stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+  margin-top: 8px;
+  font-size: 11px;
+}
+.compare-item .stats span:first-child { color: var(--muted); }
+
+@media (max-width: 980px) {
+  .cluster { grid-template-columns: 1fr; }
+  .combustion-charts { grid-template-columns: 1fr; }
+  .compare-grid { grid-template-columns: 1fr; }
+}
 .summary-grid .cell { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 .summary-grid .cell .label { font-size: 11px; color: var(--muted); }
 .summary-grid .cell .value { font-size: 18px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.gate-metrics .cell { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.gate-metrics .cell .label { font-size: 11px; color: var(--muted); }
+.gate-metrics .cell .value { font-size: 18px; font-variant-numeric: tabular-nums; margin-top: 4px; }
+
+/* ---- gates ---- */
+.gate-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.gate-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.gate-card, .roadmap-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.gate-card h3, .roadmap-card h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.gate-card canvas {
+  width: 100%;
+  height: 260px;
+  display: block;
+  background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0));
+  border-radius: 10px;
+}
+
+.roadmap-card { margin-top: 16px; }
+
+.roadmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.roadmap-item {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.roadmap-item .name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.roadmap-item .meta {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.badge-ready,
+.badge-planned {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.badge-ready {
+  color: var(--pass);
+  border: 1px solid var(--pass);
+}
+
+.badge-planned {
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
 
 /* ---- tests ---- */
 .test-tally { display: flex; gap: 14px; margin-left: auto; font-size: 13px; }
@@ -196,6 +449,4 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; border-top: 1px solid var(--line); }
 
-@media (max-width: 980px) {
-  .cluster { grid-template-columns: 1fr; }
-}
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }

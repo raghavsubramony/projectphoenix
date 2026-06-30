@@ -11,6 +11,7 @@ from .config import (
     GASOLINE_LHV_MJ_PER_KG,
     TierSpec,
 )
+from .single_cylinder import gate1_point_from_load
 
 _LHV_J_PER_KG = GASOLINE_LHV_MJ_PER_KG * 1e6
 
@@ -24,6 +25,10 @@ class GenerationResult:
     active_tier: str        # name of the governing (largest active) tier
     active_index: int       # -1 = engine off, else tier index
     efficiency: float       # instantaneous thermal efficiency (0 if off)
+    imep_bar: float = 0.0
+    knock_index: float = 0.0
+    peak_pressure_bar: float = 0.0
+    predicted_tdc_mm: float = 0.0
 
 
 class ATPE:
@@ -74,7 +79,32 @@ class ATPE:
             return GenerationResult(0.0, 0.0, 0.0, 0.0, "engine off", -1, 0.0)
 
         electric_w = setpoint_w
-        fuel_power_w = electric_w / tier.thermal_efficiency
+        efficiency = tier.thermal_efficiency
+        imep_bar = 0.0
+        knock_index = 0.0
+        peak_pressure_bar = 0.0
+        predicted_tdc_mm = 0.0
+
+        gate1 = self.cfg.gate1
+        if gate1 is not None and gate1.enabled:
+            tier_cap = max(1.0, self._cumulative[index])
+            load_fraction = max(0.05, min(1.0, electric_w / tier_cap))
+            point = gate1_point_from_load(
+                speed_rpm=gate1.reference_speed_rpm,
+                load_fraction=load_fraction,
+                displacement_cc=tier.displacement_cc,
+                generator_efficiency=self.cfg.generator_efficiency,
+                prefer_cantera=gate1.prefer_cantera,
+                tier_index=index,
+            )
+            # Keep Gate 1 map physically plausible and near tier baseline.
+            efficiency = max(0.10, min(point.electric_efficiency, 0.58))
+            imep_bar = point.imep_bar
+            knock_index = point.knock_index
+            peak_pressure_bar = point.peak_pressure_bar
+            predicted_tdc_mm = point.predicted_tdc_mm
+
+        fuel_power_w = electric_w / efficiency
         fuel_energy_j = fuel_power_w * dt_s
         fuel_kg = fuel_energy_j / _LHV_J_PER_KG
         fuel_l = fuel_kg / GASOLINE_DENSITY_KG_PER_L
@@ -86,5 +116,9 @@ class ATPE:
             co2_kg=co2_kg,
             active_tier=tier.name,
             active_index=index,
-            efficiency=tier.thermal_efficiency,
+            efficiency=efficiency,
+            imep_bar=imep_bar,
+            knock_index=knock_index,
+            peak_pressure_bar=peak_pressure_bar,
+            predicted_tdc_mm=predicted_tdc_mm,
         )

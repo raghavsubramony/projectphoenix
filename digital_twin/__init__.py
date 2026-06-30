@@ -13,6 +13,7 @@ from typing import Callable
 
 from .config import (
     TierSpec,
+    SingleCylinderGate1Config,
     ATPEConfig,
     BufferConfig,
     BatteryConfig,
@@ -27,7 +28,19 @@ from .config import (
     phase1_config_for,
     phase1_variants,
     with_battery_thermal,
+    with_gate1,
     phase2_config,
+)
+from .single_cylinder import (
+    SingleCylinderInputs,
+    SingleCylinderResult,
+    PressureTrace,
+    FreePistonConfig,
+    FreePistonResult,
+    Gate1Point,
+    simulate_1d_combustion,
+    simulate_free_piston,
+    gate1_point_from_load,
 )
 from .powertrain import Powertrain
 from .controller import UnifiedController, ClosedLoopRotorController, ControlState
@@ -172,6 +185,7 @@ from .degradation import (
 
 __all__ = [
     "TierSpec",
+    "SingleCylinderGate1Config",
     "ATPEConfig",
     "BufferConfig",
     "BatteryConfig",
@@ -186,7 +200,17 @@ __all__ = [
     "phase1_config_for",
     "phase1_variants",
     "with_battery_thermal",
+    "with_gate1",
     "phase2_config",
+    "SingleCylinderInputs",
+    "SingleCylinderResult",
+    "PressureTrace",
+    "FreePistonConfig",
+    "FreePistonResult",
+    "Gate1Point",
+    "simulate_1d_combustion",
+    "simulate_free_piston",
+    "gate1_point_from_load",
     "Powertrain",
     "UnifiedController",
     "ClosedLoopRotorController",

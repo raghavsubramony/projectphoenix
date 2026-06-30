@@ -29,6 +29,15 @@ class TierSpec:
 
 
 @dataclass(frozen=True)
+class SingleCylinderGate1Config:
+    """Optional Gate 1 single-cylinder model controls for ATPE tiers."""
+
+    enabled: bool = False
+    prefer_cantera: bool = True
+    reference_speed_rpm: float = 2600.0
+
+
+@dataclass(frozen=True)
 class ATPEConfig:
     """Adaptive Torque & Power Engine: an ordered, additive stack of tiers."""
 
@@ -40,6 +49,8 @@ class ATPEConfig:
     # limit (instantaneous response, the optimistic default used for the
     # validated steady-cycle figures).
     max_slew_w_per_s: float | None = None
+    # Optional Gate 1 physics-derived efficiency path.
+    gate1: SingleCylinderGate1Config | None = None
 
     @property
     def max_electric_w(self) -> float:
@@ -296,6 +307,26 @@ def phase1_variants(rotor_coupled: bool = False) -> dict[str, TwinConfig]:
     """All Phase-1 body variants keyed by name (AWD SUV first)."""
     return {b.name: phase1_config_for(b, rotor_coupled=rotor_coupled)
             for b in PHASE1_BODIES}
+
+
+def with_gate1(
+    cfg: TwinConfig,
+    enabled: bool = True,
+    prefer_cantera: bool = False,
+    reference_speed_rpm: float = 2600.0,
+) -> TwinConfig:
+    """Return a copy of `cfg` with the Gate 1 single-cylinder model enabled.
+
+    Opt-in so validated fuel figures from the default tier-efficiency tables
+    are never disturbed unless explicitly requested (e.g. dashboard demos).
+    """
+    from dataclasses import replace
+    gate1 = SingleCylinderGate1Config(
+        enabled=enabled,
+        prefer_cantera=prefer_cantera,
+        reference_speed_rpm=reference_speed_rpm,
+    )
+    return replace(cfg, atpe=replace(cfg.atpe, gate1=gate1))
 
 
 def with_battery_thermal(

@@ -19,6 +19,10 @@ manages state of charge, and energy is conserved every step.
 The runtime package (`digital_twin/`) is **pure Python standard library** — no
 third-party dependencies.
 
+Gate 1 (single-cylinder) support is now available as an **opt-in** path in
+`digital_twin/single_cylinder.py`. It runs in pure stdlib by default and can
+optionally use Cantera for chemistry-informed estimates when installed.
+
 ```powershell
 # Run the full demonstration (drive cycles, ERS acceptance, body comparison,
 # motor sizing, motor sweep, PCMRITMS reproduction):
@@ -30,6 +34,12 @@ third-party dependencies.
 
 # Run the regression test suite:
 .venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Optional Cantera install (for Gate 1 chemistry path):
+
+```powershell
+.venv\Scripts\python.exe -m pip install cantera
 ```
 
 ## Executive summary — the one-table front door

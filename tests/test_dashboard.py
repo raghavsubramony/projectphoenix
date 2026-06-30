@@ -50,10 +50,19 @@ class SimulateTest(unittest.TestCase):
         payload = _simulate("Highway cruise", "Default (Phase-1 SUV)", False)
         self.assertIn("summary", payload)
         self.assertIn("steps", payload)
+        self.assertIn("gates", payload)
         self.assertGreater(len(payload["steps"]), 0)
         summary = payload["summary"]
         for key in ("distance_km", "duration_s", "fuel_l_per_100km"):
             self.assertIn(key, summary)
+        gates = payload["gates"]
+        self.assertIn("gate1", gates)
+        self.assertIn("roadmap", gates)
+        self.assertGreaterEqual(len(gates["roadmap"]), 1)
+        self.assertIn("has_data", gates["gate1"])
+        if gates["gate1"]["has_data"]:
+            self.assertIn("trace", gates["gate1"])
+            self.assertIn("pressure_bar", gates["gate1"]["trace"])
         # Duration must match the integration convention (one step per sample).
         self.assertAlmostEqual(summary["duration_s"],
                                len(payload["steps"]) * summary["dt_s"],
@@ -62,6 +71,38 @@ class SimulateTest(unittest.TestCase):
     def test_simulate_rejects_unknown_cycle(self) -> None:
         with self.assertRaises(KeyError):
             _simulate("No Such Cycle", "Default (Phase-1 SUV)", False)
+
+    def test_gate1_returns_all_tiers(self) -> None:
+        payload = _simulate("Highway cruise", "Default (Phase-1 SUV)", False,
+                             gate1=True)
+        g1 = payload["gates"]["gate1"]
+        self.assertTrue(g1["has_data"])
+        self.assertEqual(len(g1["tiers"]), 3)
+        for t in g1["tiers"]:
+            self.assertIn("trace", t)
+            self.assertIn("displacement_cc", t)
+            self.assertIn("animation", t)
+            anim = t["animation"]
+            for key in ("stroke_mm", "bore_mm", "crank_deg", "piston_mm",
+                        "pressure_bar", "heat_norm", "speed_rpm"):
+                self.assertIn(key, anim)
+            self.assertEqual(len(anim["crank_deg"]), len(anim["piston_mm"]))
+            self.assertGreater(t["metrics"]["imep_bar"], 0.0)
+        # Per-step combustion telemetry when Gate 1 drives the twin.
+        engine_on = [s for s in payload["steps"] if s["tier"] > 0]
+        self.assertTrue(any(s["imep_bar"] > 0 for s in engine_on))
+        s = engine_on[0]
+        self.assertIn("combustion_tier", s)
+        self.assertIn("nominal_tier", s)
+        self.assertTrue(s["combustion_live"])
+
+    def test_gate1_tiers_differ_by_displacement(self) -> None:
+        payload = _simulate("Mixed", "Default (Phase-1 SUV)", False, gate1=True)
+        tiers = payload["gates"]["gate1"]["tiers"]
+        cc = [t["displacement_cc"] for t in tiers]
+        self.assertEqual(cc, [100.0, 300.0, 750.0])
+        peaks = [t["metrics"]["peak_pressure_bar"] for t in tiers]
+        self.assertNotEqual(peaks[0], peaks[2])
 
 
 class HttpApiTest(unittest.TestCase):
