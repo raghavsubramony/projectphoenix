@@ -88,5 +88,21 @@ class AtpeGate1IntegrationTest(unittest.TestCase):
         self.assertNotEqual(peaks[0], peaks[2])
 
 
+class Gate1BenchTest(unittest.TestCase):
+    def test_bench_stroke_matches_phoenix_x12(self) -> None:
+        from digital_twin import gate1_bench_at_load, PHOENIX_X12_STROKE_MM
+        r = gate1_bench_at_load(prefer_cantera=False, tier_index=1)
+        self.assertAlmostEqual(r.measurement.stroke_mm, PHOENIX_X12_STROKE_MM,
+                               delta=0.1)
+        self.assertGreater(len(r.checks), 0)
+
+    def test_bench_measurement_fields_are_finite(self) -> None:
+        from digital_twin import gate1_bench_at_load
+        m = gate1_bench_at_load(prefer_cantera=False).measurement
+        self.assertGreater(m.peak_power_kw, 0.0)
+        self.assertGreater(m.core_temp_c, 0.0)
+        self.assertGreater(m.electric_efficiency, 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,40 @@
+{
+  "source": "phoenix_v3_bridge",
+  "tuning": "phoenix_v3_best_tuning_v3.json",
+  "validated_utc": "2026-07-08T13:40:46Z",
+  "cartridge": {
+    "bore_mm": 96.0,
+    "stroke_mm": 50.0,
+    "frequency_hz": 42.0,
+    "cycle_time_ms": 23.809523809523807,
+    "peak_pressure_bar": 118.10883793104006,
+    "load_fraction": 0.94686,
+    "capture_min_bdc_mm": 13.0,
+    "generator_rated_force_n": 7058.578481
+  },
+  "performance_sim": {
+    "net_efficiency": 0.5404992841344165,
+    "capture_fraction": 0.5026060891166538,
+    "elec_power_w": 19775.06916006185,
+    "ring_power_w_12x": 237285.8813842123
+  },
+  "performance_hardware_expected": {
+    "net_efficiency_min": 0.3604992841344165,
+    "net_efficiency_max": 0.4604992841344165
+  },
+  "long_run_cooling": "water_jacket",
+  "instrumentation_minimum": [
+    "cylinder_pressure_50khz",
+    "piston_position_x2_10khz",
+    "fuel_flow",
+    "dc_bus_power_analyzer",
+    "exhaust_egt",
+    "generator_winding_temp"
+  ],
+  "acceptance_first_rig": {
+    "stable_cycles_min": 100,
+    "gate1_checks_min": 5,
+    "stroke_tolerance_mm": 2.0,
+    "efficiency_vs_sim_pp": 12.0
+  }
+}

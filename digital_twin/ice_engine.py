@@ -116,6 +116,10 @@ class GenerationResult:
     active_tier: str
     active_index: int
     efficiency: float
+    imep_bar: float = 0.0
+    knock_index: float = 0.0
+    peak_pressure_bar: float = 0.0
+    predicted_tdc_mm: float = 0.0
 
 
 def _interp_efficiency(load_frac: float, curve: tuple[BsfcPoint, ...]) -> float:

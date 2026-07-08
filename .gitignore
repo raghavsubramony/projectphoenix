@@ -8,5 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
+.venv-design/
 chatSessions/
 .python313/
+.python314/
+
+# Design tooling secrets (never commit)
+designs/@ffmpeg-installer/ffmpeg/.env
+**/.env

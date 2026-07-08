@@ -1,0 +1,32 @@
+{
+  "stable": true,
+  "search_version": "v2",
+  "metrics": {
+    "net_efficiency": 0.634636,
+    "capture_fraction": 0.631259,
+    "max_bdc_mm": 19.829,
+    "elec_energy_j": 552.84,
+    "peak_pressure_bar": 100.5
+  },
+  "peak_unstable": {
+    "net_efficiency": 0.671
+  },
+  "parameters": {
+    "generator_force_scale": 2.443393,
+    "generator_rated_force_n": 7058.578481,
+    "generator_spring_decouple": 0.293094,
+    "air_spring_reference_bar": 10.0,
+    "air_spring_max_cc": 79.463184,
+    "air_spring_min_cc": 22.343708,
+    "air_spring_expansion_gain": 0.563856,
+    "air_spring_compression_gain": 1.021805,
+    "generator_adaptive_profile": 0.122243,
+    "exhaust_open_ms": 8.8,
+    "load_fraction": 0.94686,
+    "frequency_hz": 42.0,
+    "combustion_pressure_gain": 1.680398,
+    "burn_duration_ms": 1.663208,
+    "damping_n_s_m": 32.574801
+  },
+  "corpus_size": 500
+}

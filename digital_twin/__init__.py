@@ -29,6 +29,7 @@ from .config import (
     phase1_variants,
     with_battery_thermal,
     with_gate1,
+    with_phoenix_v3,
     phase2_config,
 )
 from .single_cylinder import (
@@ -38,9 +39,14 @@ from .single_cylinder import (
     FreePistonConfig,
     FreePistonResult,
     Gate1Point,
+    Gate1BenchTargets,
+    Gate1BenchMeasurement,
+    Gate1BenchResult,
+    PHOENIX_X12_STROKE_MM,
     simulate_1d_combustion,
     simulate_free_piston,
     gate1_point_from_load,
+    gate1_bench_at_load,
 )
 from .powertrain import Powertrain
 from .controller import UnifiedController, ClosedLoopRotorController, ControlState
@@ -181,6 +187,70 @@ from .degradation import (
     degradation_for,
     fleet_degradation,
     degradation_table,
+)
+from .ice_benchmark import (
+    benchmark_summary,
+    wltp_benchmark,
+    run_ice_fleet,
+)
+from .graceful_degradation import (
+    DegradedScenario,
+    DegradedBodyResult,
+    atpe_with_cylinder_offline,
+    evaluate_degraded_body,
+    fleet_graceful_degradation,
+    graceful_degradation_table,
+)
+from .gate1_matrix import (
+    Gate1MatrixCell,
+    Gate1MatrixSummary,
+    Gate1VehicleComparison,
+    run_gate1_matrix,
+    gate1_bench_uncertainty,
+    gate1_vehicle_fuel_comparison,
+    gate1_matrix_table,
+    gate1_matrix_report,
+    gate1_matrix_csv_rows,
+    write_gate1_matrix_csv,
+    GATE1_MATRIX_CSV_COLUMNS,
+    DEFAULT_SPEED_RPM,
+    DEFAULT_LOAD_FRACTIONS,
+    SWEET_SPOT_TIER_INDEX,
+)
+from .gate4_scaling import (
+    CylinderLayout,
+    Gate4LayoutResult,
+    Gate4ScalingSummary,
+    REFERENCE_LAYOUT,
+    CANONICAL_X12_LAYOUT,
+    DEFAULT_RING_SIZES,
+    STORYBOARD_CARTRIDGE_KW,
+    RATING_PROFILES,
+    build_atpe_from_layout,
+    build_x12_homogeneous_atpe,
+    charge_sustaining_fuel_config,
+    enumerate_layouts,
+    enumerate_ring_layouts,
+    ring_label,
+    layout_tier_mix_kind,
+    is_design_aligned,
+    count_active_tiers,
+    is_all_three_tiers,
+    evaluate_layout,
+    run_gate4_sweep,
+    run_ring_size_study,
+    run_x12_ring_sweep,
+    run_full_gate4_study,
+    gate4_scaling_table,
+    gate4_ring_sweet_spot_table,
+    gate4_tier_architecture_table,
+    gate4_scaling_report,
+    gate4_csv_rows,
+    write_gate4_scaling_csv,
+    write_gate4_tier_advantage_csv,
+    build_tier_architecture_comparison,
+    GATE4_CSV_COLUMNS,
+    TIER_ADVANTAGE_CSV_COLUMNS,
 )
 
 __all__ = [
@@ -326,7 +396,70 @@ __all__ = [
     "degradation_for",
     "fleet_degradation",
     "degradation_table",
+    "benchmark_summary",
+    "wltp_benchmark",
+    "run_ice_fleet",
+    "DegradedScenario",
+    "DegradedBodyResult",
+    "atpe_with_cylinder_offline",
+    "evaluate_degraded_body",
+    "fleet_graceful_degradation",
+    "graceful_degradation_table",
+    "Gate1MatrixCell",
+    "Gate1MatrixSummary",
+    "Gate1VehicleComparison",
+    "run_gate1_matrix",
+    "gate1_bench_uncertainty",
+    "gate1_vehicle_fuel_comparison",
+    "gate1_matrix_table",
+    "gate1_matrix_report",
+    "gate1_matrix_csv_rows",
+    "write_gate1_matrix_csv",
+    "GATE1_MATRIX_CSV_COLUMNS",
+    "DEFAULT_SPEED_RPM",
+    "DEFAULT_LOAD_FRACTIONS",
+    "SWEET_SPOT_TIER_INDEX",
+    "CylinderLayout",
+    "Gate4LayoutResult",
+    "Gate4ScalingSummary",
+    "REFERENCE_LAYOUT",
+    "CANONICAL_X12_LAYOUT",
+    "DEFAULT_RING_SIZES",
+    "STORYBOARD_CARTRIDGE_KW",
+    "RATING_PROFILES",
+    "build_atpe_from_layout",
+    "build_x12_homogeneous_atpe",
+    "charge_sustaining_fuel_config",
+    "enumerate_layouts",
+    "enumerate_ring_layouts",
+    "ring_label",
+    "layout_tier_mix_kind",
+    "is_design_aligned",
+    "count_active_tiers",
+    "is_all_three_tiers",
+    "evaluate_layout",
+    "run_gate4_sweep",
+    "run_ring_size_study",
+    "run_x12_ring_sweep",
+    "run_full_gate4_study",
+    "gate4_scaling_table",
+    "gate4_ring_sweet_spot_table",
+    "gate4_tier_architecture_table",
+    "gate4_scaling_report",
+    "gate4_csv_rows",
+    "write_gate4_scaling_csv",
+    "write_gate4_tier_advantage_csv",
+    "build_tier_architecture_comparison",
+    "GATE4_CSV_COLUMNS",
+    "TIER_ADVANTAGE_CSV_COLUMNS",
+    "Gate1BenchTargets",
+    "Gate1BenchMeasurement",
+    "Gate1BenchResult",
+    "gate1_bench_at_load",
+    "PHOENIX_X12_STROKE_MM",
     "build_default_twin",
+    "build_gate1_twin",
+    "build_phoenix_v3_twin",
     "build_performance_twin",
     "build_body_twins",
 ]
@@ -335,6 +468,34 @@ __all__ = [
 def build_default_twin(rotor_coupled: bool = False) -> Powertrain:
     """Return a Powertrain configured for the Phase-1 petrol MUV/SUV."""
     return Powertrain(phase1_config(rotor_coupled=rotor_coupled))
+
+
+def build_gate1_twin(
+    rotor_coupled: bool = False,
+    *,
+    prefer_cantera: bool = False,
+    reference_speed_rpm: float = 2600.0,
+) -> Powertrain:
+    """Phase-1 SUV twin with Gate 1 physics-derived tier efficiencies enabled."""
+    return Powertrain(with_gate1(
+        phase1_config(rotor_coupled=rotor_coupled),
+        prefer_cantera=prefer_cantera,
+        reference_speed_rpm=reference_speed_rpm,
+    ))
+
+
+def build_phoenix_v3_twin(
+    rotor_coupled: bool = False,
+    *,
+    tuning_path: str | None = None,
+    v3_cycles: int = 24,
+) -> Powertrain:
+    """Phase-1 SUV twin with Phoenix V3 cartridge physics for ATPE tiers."""
+    return Powertrain(with_phoenix_v3(
+        phase1_config(rotor_coupled=rotor_coupled),
+        tuning_path=tuning_path,
+        v3_cycles=v3_cycles,
+    ))
 
 
 def build_performance_twin() -> Powertrain:

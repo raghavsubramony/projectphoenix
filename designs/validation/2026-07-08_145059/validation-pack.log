@@ -1,0 +1,34 @@
+﻿[14:50:59] Phoenix V3 validation pack
+[14:50:59] Repo:    C:\Users\c52444a\Desktop\project Phoenix
+[14:50:59] Output:  C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_145059
+[14:50:59] 
+[14:51:01] === pytest_energy ===
+[14:51:01] CMD: py -3 -m pytest tests/test_phoenix_v3_energy.py -v
+[14:51:05] OK: pytest_energy
+[14:51:05] 
+[14:51:06] === best_tuning_audit ===
+[14:51:06] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --cycles 12
+[14:51:08] OK: best_tuning_audit
+[14:51:08] 
+[14:51:09] === asymmetry_sweep ===
+[14:51:09] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --sweep-asymmetry --cycles 10
+[14:51:11] OK: asymmetry_sweep
+[14:51:11] 
+[14:51:12] === disturbance_sweep ===
+[14:51:12] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --sweep-disturbance --cycles 10
+[14:51:15] OK: disturbance_sweep
+[14:51:15] 
+[14:51:16] === transient_faults ===
+[14:51:16] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --transient --cycles 12 --fault-cycle 3
+[14:51:19] OK: transient_faults
+[14:51:19] 
+[14:51:20] === extraction_sweep ===
+[14:51:20] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --sweep-extraction --cycles 8
+[14:51:21] OK: extraction_sweep
+[14:51:21] 
+[14:51:21] Copied: designs\phoenix_v3_cycle_dashboard.png
+[14:51:21] Copied: designs\phoenix_v3_scavenge_phases.png
+[14:51:21] Copied: designs\phoenix_v3_sweep_extraction.png
+[14:51:21] Copied: designs\phoenix_v3_best_tuning_v2.json
+[14:51:21] Validation pack complete.
+[14:51:21] Artifacts: C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_145059

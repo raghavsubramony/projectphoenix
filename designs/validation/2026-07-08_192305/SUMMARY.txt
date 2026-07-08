@@ -1,0 +1,37 @@
+﻿Phoenix V3 Validation Pack
+==========================
+Run time:  2026-07-08_192305
+Repo:      C:\Users\c52444a\Desktop\project Phoenix
+Log:       C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_192305\validation-pack.log
+
+Steps:
+  1. pytest tests/test_phoenix_v3_energy.py
+  2. Canonical efficiency report (24 cycles, JSON)
+  3. Best-tuning energy audit (12 cycles)
+  4. Actuator limits suite (sensor delay, back-EMF, current slew)
+  5. Stochastic combustion Monte Carlo
+  6. Asymmetry sensitivity sweep
+  7. Disturbance sensitivity sweep (fuel/gen/valve/pressure/spring)
+  8. Transient fault suite (misfire, stuck valve, load double)
+  9. Extraction strategy sweep
+
+Key files in this folder:
+  validation-pack.log     â€” combined run log
+  canonical_efficiency.json â€” single canonical Enet definition
+  best_tuning_audit.log   â€” full energy audit output
+  actuator_limits.log
+  stochastic_combustion.log
+  asymmetry_sweep.log
+  disturbance_sweep.log
+  transient_faults.log
+  extraction_sweep.log
+  phoenix_v3_cycle_dashboard.png (if generated)
+  phoenix_v3_scavenge_phases.png (if generated)
+  phoenix_v3_sweep_extraction.png (if generated)
+
+Re-run optimizer on corrected physics (not included â€” takes longer):
+  py -3 designs/phoenix_v3_optimizer.py --trials 500 --workers 8 --cycles 10 
+      --seed 200 --corpus designs/phoenix_v3_tuning_corpus_v3.csv
+
+Quick single-run audit:
+  py -3 designs/phoenix_v3/validation/report.py --best-tuning --cycles 24

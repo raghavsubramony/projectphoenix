@@ -1,0 +1,31 @@
+﻿Phoenix V3 Validation Pack
+==========================
+Run time:  2026-07-08_145059
+Repo:      C:\Users\c52444a\Desktop\project Phoenix
+Log:       C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_145059\validation-pack.log
+
+Steps:
+  1. pytest tests/test_phoenix_v3_energy.py
+  2. Best-tuning energy audit (12 cycles)
+  3. Asymmetry sensitivity sweep
+  4. Disturbance sensitivity sweep (fuel/gen/valve/pressure/spring)
+  5. Transient fault suite (misfire, stuck valve, load double)
+  6. Extraction strategy sweep
+
+Key files in this folder:
+  validation-pack.log     â€” combined run log
+  best_tuning_audit.log   â€” full energy audit output
+  asymmetry_sweep.log
+  disturbance_sweep.log
+  transient_faults.log
+  extraction_sweep.log
+  phoenix_v3_cycle_dashboard.png (if generated)
+  phoenix_v3_scavenge_phases.png (if generated)
+  phoenix_v3_sweep_extraction.png (if generated)
+
+Re-run optimizer on corrected physics (not included â€” takes longer):
+  py -3 designs/phoenix_v3_optimizer.py --trials 500 --workers 8 --cycles 10 
+      --seed 200 --corpus designs/phoenix_v3_tuning_corpus_v3.csv
+
+Quick single-run audit:
+  py -3 designs/phoenix_v3_simulation.py --headless --best-tuning --cycles 12

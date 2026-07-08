@@ -1,0 +1,43 @@
+{
+  "score": 0.37668184485908185,
+  "stable": true,
+  "metrics": {
+    "net_efficiency": 0.5048423002605434,
+    "capture_fraction": 0.1349670954506275,
+    "max_bdc_mm": 25.0,
+    "elec_energy_j": 209.63729990378357,
+    "peak_pressure_bar": 147.2074554345849,
+    "spring_recovery": 0.95,
+    "ke_power_fraction": 3.5935396660774903,
+    "unharvested_fraction": 0.0
+  },
+  "parameters": {
+    "generator_force_scale": 1.301113085106383,
+    "generator_rated_force_n": 4794.760831964286,
+    "generator_spring_decouple": 0.23591600000000001,
+    "air_spring_reference_bar": 10.0,
+    "air_spring_max_cc": 78.754324,
+    "air_spring_min_cc": 20.606106,
+    "air_spring_expansion_gain": 0.701612,
+    "air_spring_compression_gain": 1.0,
+    "generator_adaptive_profile": 0.0,
+    "exhaust_open_ms": 8.708121,
+    "load_fraction": 0.45136200000000015,
+    "frequency_hz": 22.0,
+    "combustion_pressure_gain": 1.75,
+    "burn_duration_ms": 1.707566,
+    "damping_n_s_m": 30.388386
+  },
+  "corpus_size": 400,
+  "search_version": "actuator",
+  "physics_note": "Metrics from validate_best_for_export() on current V3 physics; not legacy corpus scores.",
+  "ring_validation": {
+    "ring_efficiency": 0.5058827509241753,
+    "ring_gap_pp": 0.0010404506636318978,
+    "ring_valid": false,
+    "physics_validated": false,
+    "actuator_mode": true,
+    "ideal_plant_efficiency": 0.5367386244515328,
+    "actuator_efficiency_delta_pp": -3.189632419098931
+  }
+}

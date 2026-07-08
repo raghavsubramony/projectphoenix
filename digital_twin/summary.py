@@ -1,16 +1,14 @@
 """Executive summary -- the single front door to every Phase-1 headline.
 
-Each Move (A--I) proves one layer in depth, but the results live in nine
-separate sections. This module rolls the load-bearing numbers from all of them
-into one compact dashboard so a newcomer can see the whole story at a glance:
-per-body fuel, cost, lifecycle CO2, right-sized battery power, the uncertainty
-band, the seasonal swing and the standardized-cycle figure, plus the handful of
-fleet-wide headline facts.
+Each Move (A--M) proves one layer in depth, but the results live in separate
+sections. This module rolls the load-bearing numbers from all of them into one
+compact dashboard so a newcomer can see the whole story at a glance: per-body
+fuel, cost, lifecycle CO2, right-sized battery power, the uncertainty band,
+seasonal and regulatory figures, cold-start and payload penalties, plug-in CO2,
+ageing drift, and the ATPE-vs-ICE benchmark headline.
 
-It is **read-only and additive**: it only *reads* the existing public API
-(`fleet_tco`, `fleet_battery_sizing`, `fleet_uncertainty`, `fleet_ambient`,
-`fleet_regulatory`, the rotor model), so it can never change a validated number.
-Pure standard library.
+It is **read-only and additive**: it only *reads* the existing public API, so
+it can never change a validated number. Pure standard library.
 """
 
 from __future__ import annotations
@@ -25,12 +23,19 @@ from .pcmritms_coupling import rotor_transient_power_w
 from .sizing import fleet_battery_sizing
 from .montecarlo import fleet_uncertainty
 from .ambient import fleet_ambient
+from .coldstart import fleet_cold_start
+from .payload import fleet_payload
+from .phev import GridConfig, fleet_phev
+from .degradation import fleet_degradation
 from .regulatory_cycles import RegulatoryCycles, fleet_regulatory
+from .graceful_degradation import fleet_graceful_degradation
+from .ice_benchmark import run_ice_fleet
+from .drive_cycles import DriveCycles
 
 
 @dataclass(frozen=True)
 class BodySummary:
-    """Every headline for one vehicle body, gathered across Moves A--I."""
+    """Every headline for one vehicle body, gathered across Moves A--M."""
 
     body: str
     fuel_l_per_100km: float          # Move B: blended charge-sustaining fuel
@@ -42,6 +47,11 @@ class BodySummary:
     battery_c_rate: float            # Move F: C-rate at that power
     wltp_fuel_l_per_100km: float     # Move I: standardized WLTP economy
     ambient_swing_pct: float         # Move H: cold-to-hot fuel swing
+    cold_penalty_pct: float          # Move J: cold-start penalty at -10 C
+    payload_penalty_pct: float       # Move K: full-load fuel penalty
+    phev_co2_g_per_km: float         # Move L: plug-in CO2 (clean grid)
+    fuel_drift_pct: float            # Move M: fuel drift new -> EOL
+    range_loss_pct: float            # Move M: EV range loss new -> EOL
 
 
 @dataclass(frozen=True)
@@ -57,11 +67,13 @@ class ExecutiveSummary:
     embodied_co2_share_pct: float    # Move D: embodied-battery share (SUV)
     derates_in_climate: bool         # Move H: any thermal derate -10..+40 C
     regulatory_shortfalls: int       # Move I: capability misses on WLTP/EPA
+    ice_mixed_saving_pct: float      # Move N: ATPE vs 2.0L turbo on mixed cycle
+    graceful_degraded_pass: bool     # ERS §4.8: one cylinder offline still capable
 
     def report(self) -> str:
         lines = [
             "================================================================",
-            "  PROJECT PHOENIX - executive summary (Phase-1, Moves A-I)",
+            "  PROJECT PHOENIX - executive summary (Phase-1, Moves A-M)",
             "================================================================",
             "",
             "  Per-body headlines (same powertrain, six bodies):",
@@ -80,6 +92,19 @@ class ExecutiveSummary:
                 f"{b.ambient_swing_pct:5.1f}%")
         lines += [
             "",
+            "  Moves J-M (cold / payload / plug-in / ageing):",
+            "  Body          Cold%  Payload%  PHEV CO2  Fuel drift  Range loss",
+            "  " + "-" * 72,
+        ]
+        for b in self.bodies:
+            lines.append(
+                f"  {b.body:<12} {b.cold_penalty_pct:5.1f}%  "
+                f"{b.payload_penalty_pct:7.1f}%  "
+                f"{b.phev_co2_g_per_km:7.0f} g/km  "
+                f"+{b.fuel_drift_pct:5.1f}%     "
+                f"-{b.range_loss_pct:5.1f}%")
+        lines += [
+            "",
             "  Fleet-wide headline facts:",
             f"    PCMRITMS rotor      : {self.rotor_peak_nm:.1f} N.m peak "
             f"(+{self.rotor_boost_pct:.1f}%), {self.rotor_surge_kw:.1f} kW surge "
@@ -90,10 +115,14 @@ class ExecutiveSummary:
             f"    Climate robustness  : thermal derate from -10C to +40C? "
             f"{'yes' if self.derates_in_climate else 'no'}; "
             f"regulatory shortfalls: {self.regulatory_shortfalls}",
+            f"    ATPE vs 2.0L turbo  : {self.ice_mixed_saving_pct:.1f}% fuel saving "
+            f"(AWD SUV mixed cycle, identical vehicle stack)",
+            f"    Fault tolerance     : one cylinder offline -> "
+            f"{'all bodies pass ERS' if self.graceful_degraded_pass else 'see graceful_degradation report'}",
             "",
             "  Read: small cool-running pack, low cost & CO2, capable across the",
-            "  full climate and type-approval envelope - every figure is the",
-            "  median of an honest band, not an optimistic point.",
+            "  full climate, regulatory, cold-start, payload, plug-in, and ageing",
+            "  envelope - every figure is the median of an honest band.",
             "================================================================",
         ]
         return "\n".join(lines)
@@ -116,6 +145,25 @@ def build_executive_summary(
     wltp_by = {r.body: r for r in reg}
     reg_shortfalls = sum(r.shortfall_events for r in fleet_regulatory())
 
+    cold_by = {r.body: r for r in fleet_cold_start(ambient_c=-10)}
+    payload_by = {s.body: s for s in fleet_payload()}
+    clean_grid = GridConfig(grid_co2_kg_per_kwh=0.05)
+    phev_by = {r.body: r for r in fleet_phev(grid=clean_grid)}
+    deg_by = {c.body: c for c in fleet_degradation(econ=econ)}
+    degraded_ok = all(r.all_passed for r in fleet_graceful_degradation())
+
+    mixed = DriveCycles.mixed()
+    atpe_mixed = next(
+        c for c in run_fleet(charge_sustaining_bodies(), [mixed])
+        if c.body == "AWD SUV")
+    ice_mixed = next(
+        c for c in run_ice_fleet(cycles=[mixed])
+        if c.body == "AWD SUV")
+    ice_saving = (
+        100.0 * (ice_mixed.fuel_l_per_100km - atpe_mixed.fuel_l_per_100km)
+        / ice_mixed.fuel_l_per_100km
+        if ice_mixed.fuel_l_per_100km > 0 else 0.0)
+
     rows: list[BodySummary] = []
     for t in tco:
         s = sizing_by[t.body]
@@ -131,6 +179,11 @@ def build_executive_summary(
             battery_c_rate=s.recommended_c_rate,
             wltp_fuel_l_per_100km=wltp_by[t.body].fuel_l_per_100km,
             ambient_swing_pct=ambient_by[t.body].fuel_swing_pct,
+            cold_penalty_pct=cold_by[t.body].penalty_pct,
+            payload_penalty_pct=payload_by[t.body].full_penalty_pct,
+            phev_co2_g_per_km=phev_by[t.body].phev_co2_g_per_km,
+            fuel_drift_pct=deg_by[t.body].fuel_drift_pct,
+            range_loss_pct=deg_by[t.body].range_loss_pct,
         ))
 
     tm = simulate_torque_augmentation()
@@ -150,4 +203,6 @@ def build_executive_summary(
         embodied_co2_share_pct=embodied_share,
         derates_in_climate=any_derate,
         regulatory_shortfalls=reg_shortfalls,
+        ice_mixed_saving_pct=ice_saving,
+        graceful_degraded_pass=degraded_ok,
     )

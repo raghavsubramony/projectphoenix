@@ -6,9 +6,81 @@ digital twin should be measured against.
 
 Cross-references: [01-atpe-concept.md](01-atpe-concept.md),
 [07-core-concept-refinements.md](07-core-concept-refinements.md),
-[08-digital-twin-design.md](08-digital-twin-design.md).
+[08-digital-twin-design.md](08-digital-twin-design.md),
+[PROJECT-STATUS-AND-NEXT-STEPS.md](PROJECT-STATUS-AND-NEXT-STEPS.md).
 
-## 1. Framing Refinement — Torque, Power, Acceleration Are Coupled
+## Gate scorecard
+
+*Living status for the seven development gates (§6). Update this table when bench or vehicle
+measurements land — software-only progress does not advance a hardware gate.*
+
+**Last updated:** July 2026  
+**Integrity check:** `.venv\Scripts\python.exe verify.py` → PASS (58 checks + 135 tests)
+
+### Summary
+
+| Track | Position |
+|-------|----------|
+| **Software** | **Gate 5 complete**; Gates 1–4 and 6 have partial digital stand-ins; Gate 7 is concept-only |
+| **Hardware** | **No gate cleared** — critical path is Gate 1 lab rig (Seed phase, §Seed-phase bench test matrix) |
+
+### Gate-by-gate
+
+| Gate | Milestone | Software | Hardware | Key evidence |
+|:----:|-----------|----------|----------|--------------|
+| **1** | Single-cylinder twin | **Partial** — 48-cell virtual bench + opt-in physics; combustion surrogate | **Not started** | [`gate1_matrix.py`](../digital_twin/gate1_matrix.py), [`single_cylinder.py`](../digital_twin/single_cylinder.py), `gate1_bench_at_load()` |
+| **2** | Stable free-piston operation | **Partial** — RPM-linked cycle timing, bearing-runout surrogate | **Not started** | `simulate_free_piston(speed_rpm=…)`; no stability envelope or bearing controller |
+| **3** | Linear generator integration | **Partial** — parametric η_gen, bench kW estimate | **Not started** | `ATPEConfig.generator_efficiency`; no EM FEA |
+| **4** | Multi-cylinder synchronization | **Partial** — X4–X16 tier-mix sweep + CSV (`gate4_scaling.py`) | **Not started** | `run_ring_size_study()`, `run_full_gate4_study()`, §Virtual Gate 4 |
+| **5** | Vehicle integration | **Done** — six bodies, cycles, ERS 9/9, dashboard | **Not started** | [`acceptance.py`](../digital_twin/acceptance.py), `verify.py`, `python -m dashboard` |
+| **6** | AI optimization | **Started** — imitation study, not production-ready | **Not started** | [`ml_study/`](../ml_study/) (~94.5 % tier accuracy; closed-loop energy-bound) |
+| **7** | Mechanical design & CAD | **Concept only** — Blender hero, storyboard, `.glb` | **Not started** | [`designs/design.py`](../designs/design.py); no manufacturing STEP or packaging study |
+
+**Status key:** *Done* = simulation meets gate intent and is locked by tests. *Partial* = useful
+model or plan exists but gate intent not fully met. *Started* = exploratory work only.
+*Concept only* = visuals or narrative, not engineering release. Hardware *Not started* = no
+measured sign-off on that gate.
+
+### Storyboard → Gate mapping (PHOENIX-X12)
+
+The 20-panel storyboard ([designs/create the scenes use the image as the idea concept.png](../designs/create%20the%20scenes%20use%20the%20image%20as%20the%20idea%20concept.png)) describes the **production X12 ring**. Seed hardware validates **one cartridge** first (Gate 1), then scales toward Gate 4.
+
+| Storyboard focus | Primary gate | Software today | Next hardware step |
+|------------------|-------------|----------------|---------------------|
+| Scenes 8–10 — compression, ignition, piston motion | 1–2 | Virtual 48-cell matrix + `single_cylinder` surrogates | Single-cartridge rig: LVDT, pressure trace, stroke |
+| Scene 11 — linear generator 78 kW | 3 | Load-bank kW in `gate1_bench_at_load()` | Load bank + DC power analyser on rig |
+| Scene 12 — magnetic bearing 0.03 mm | 2 | Runout proxy | Displacement probes on bearing subsystem |
+| Scenes 13–14 — thermal / exhaust | 1 | Temperature surrogates | Pyrometer + exhaust thermocouples |
+| Scenes 15–16 — 12-cartridge power, HV bus | 4–5 | 8-cylinder tier model; vehicle twin | Multi-cartridge ring + integrated electrical bench |
+| Scene 20 — full system overview | 5–7 | Executive summary + concept render | Mule vehicle + production CAD |
+
+### How to update this scorecard
+
+When bench or vehicle data arrives:
+
+1. Add a row to the **Measured results** log below (date, gate, instrument, pass/fail).
+2. Change the **Hardware** column for that gate (*Not started* → *Partial* or *Done*).
+3. If measurements falsify the twin, update the relevant module and re-run `verify.py`.
+4. Bump **Last updated** at the top of this section.
+
+#### Measured results log
+
+| Date | Gate | Deliverable | Result | Notes |
+|------|:----:|-------------|--------|-------|
+| — | — | *No hardware measurements in repo yet* | — | Seed step 1: single free-piston cartridge rig |
+
+### Critical path (Seed, months 0–18)
+
+1. **Gate 1 hardware** — single cartridge rig (steps 1–3 in §Seed-phase bench test matrix)
+2. **Gate 2 hardware** — stable piston operation on that rig
+3. **Gate 3 hardware** — linear generator integrated on same rig
+4. **Gate 4 hardware** — multi-cartridge / ring synchronization
+5. **Gate 5 hardware** — mule vehicle + dyno (compare to twin highway 4.46 L/100 km)
+6. **Gate 7** — production CAD once loads and packaging are known from 1–3
+
+Gates 5 (software) and 6 (ML study) are **not blockers** for starting Gate 1 hardware.
+
+---
 
 The core engineering premise: torque, power, and acceleration are **not independently
 controllable**. Power follows from torque and speed ($P = \tau \cdot \omega$), so the
@@ -143,17 +215,18 @@ above are more aggressive than our current performance config — see reconcilia
 6. **Gate 6** — AI optimization
 7. **Gate 7** — Mechanical design and CAD
 
-Our current twin sits at roughly **Gate 5** (vehicle integration, deterministic control), with
-single-cylinder combustion fidelity (Gates 1–2) still abstracted.
+**Current position:** see the [Gate scorecard](#gate-scorecard) at the top of this document
+(software ≈ Gate 5 complete; hardware = none cleared; Seed critical path = Gate 1 lab rig).
 
 ## 7. What This Adds to the Digital Twin (backlog)
 
 - ✅ **Acceptance harness (done):** P1 targets encoded as objective pass/fail checks — see §9 and [digital_twin/acceptance.py](../digital_twin/acceptance.py).
 - ✅ **Split efficiency chain (done):** generator efficiency (`ATPEConfig.generator_efficiency`, >95%) is now separated from brake thermal efficiency (>45%), so results map directly to ERS §4.5.
 - **`DriverIntent` layer:** derive intent from pedal-rate, feeding the controller (replaces the raw spike threshold).
-- **Graceful degradation:** allow a tier/cylinder to be flagged offline and confirm the twin continues within reduced limits (ERS §4.8).
+- ✅ **Graceful degradation (done):** one cylinder offline per tier — see [graceful_degradation.py](../digital_twin/graceful_degradation.py) and `verify.py`.
 - **Variable compression/stroke knob:** expose an efficiency-vs-power trade per tier rather than a fixed point.
-- **Benchmark harness:** compare against a conventional 2.0 L turbo baseline on identical cycles (validation per the source's Stage 6).
+- ✅ **Benchmark harness (done):** conventional 2.0 L turbo baseline on identical cycles — see [ice_benchmark.py](../digital_twin/ice_benchmark.py) (Move N).
+- ✅ **Energy-weighted multi-tier fuel accounting (done, July 2026):** `atpe.py` fills tiers from smallest upward and sums per-tier fuel instead of applying the governing tier's η to all output — removes the 110 kW efficiency cliff; locked by `tests/test_atpe.py`.
 
 ## 8. Reconciliation Notes vs. Existing Docs
 
@@ -495,13 +568,13 @@ live code** and checks it against its validated value, then runs the full test s
 ```
   [PASS] Rotor peak torque         242.8 N.m vs 242.8 N.m
   [PASS] Coupled buffer burst      140.2 kW  vs 140.2 kW
-  [PASS] SUV highway fuel          4.62 L/100km
+  [PASS] SUV highway fuel          4.46 L/100km
   [PASS] All 6 bodies pass all ERS checks       9/9 per body
   [PASS] Projected pack life > 500k km          858k km
   [PASS] 2x buffer eliminates transient shortfalls
   [PASS] Aero dominates mass at highway speed
   ...
-  RESULT: PASS  (18 checks + 43 tests)
+  RESULT: PASS  (51 checks + 121 tests)
 ```
 
 Because the checks recompute from the model (not from cached constants), any silent drift in the
@@ -524,12 +597,12 @@ Each body's fuel and durability numbers are blended across a representative usag
 === Fleet TCO + lifecycle CO2 ===
   Body          L/100km  Cost/km  Battery   CO2 t   g/km*
   --------------------------------------------------------
-  AWD SUV          2.70    0.073       0x    26.2     105
-  Sedan            0.67    0.041       0x    11.9      48
-  Hatchback        0.57    0.039       0x    11.2      45
-  Crossover        1.15    0.048       0x    15.2      61
-  Pickup           4.03    0.094       0x    35.5     142
-  Van / MPV        3.06    0.079       0x    28.7     115
+  AWD SUV          2.61    0.072       0x    25.5     102
+  Sedan            0.64    0.040       0x    11.7      47
+  Hatchback        0.55    0.039       0x    11.1      44
+  Crossover        1.11    0.048       0x    15.0      60
+  Pickup           3.86    0.092       0x    34.3     137
+  Van / MPV        2.95    0.077       0x    27.9     112
   (* g/km = all-in lifecycle CO2; Battery = mid-life replacements)
 ```
 
@@ -665,7 +738,7 @@ flashy peak-power hardware.
 
 ## Move G — Uncertainty bands: every headline number is a distribution, not a point
 
-Moves A–F report **point estimates** — single numbers like "SUV highway 4.62 L/100 km" or
+Moves A–F report **point estimates** — single numbers like "SUV highway 4.46 L/100 km" or
 "Pickup 0.094 €/km". But every input that feeds those numbers is itself uncertain: vehicle mass,
 drag, rolling resistance and aux load are tolerances; fuel price, maintenance, battery cost and the
 embodied-CO₂ factors are forecasts. Move G asks the honest follow-up question — **how wide is each
@@ -679,20 +752,20 @@ of trials turn each scalar into a distribution with a 5th/50th/95th-percentile b
 
 ```
 === AWD SUV Highway cruise: fuel_l_per_100km (200 trials) ===
-  nominal : 4.623 L/100km
-  90% band: [4.24, 5.09] L/100km (+/-9.2% of median)
+  nominal : 4.459 L/100km
+  90% band: [4.08, 4.93] L/100km (+/-9.2% of median)
 ```
 
 ```
 === Fleet uncertainty bands (64 trials, 90% CI) ===
   Body               Cost/km (5-95%)      CO2 g/km (5-95%)
   ------------------------------------------------------
-  AWD SUV        0.074 [0.058-0.091]          105 [94-120]
-  Sedan          0.041 [0.031-0.052]            48 [43-55]
-  Hatchback      0.039 [0.030-0.051]            44 [37-51]
-  Crossover      0.048 [0.040-0.060]            61 [51-73]
-  Pickup         0.105 [0.080-0.139]         147 [129-194]
-  Van / MPV      0.079 [0.063-0.097]         115 [105-128]
+  AWD SUV        0.072 [0.057-0.089]          102 [91-117]
+  Sedan          0.040 [0.032-0.051]            47 [41-56]
+  Hatchback      0.039 [0.029-0.049]            44 [38-52]
+  Crossover      0.048 [0.040-0.061]            60 [51-73]
+  Pickup         0.096 [0.076-0.121]         142 [121-175]
+  Van / MPV      0.077 [0.066-0.106]         112 [103-130]
 ```
 
 Two findings fall out:
@@ -794,10 +867,12 @@ Running the fleet charge-sustaining (SoC-corrected equivalent fuel) on the recon
 ```
 === Fleet fuel economy on regulatory cycles (L/100km) ===
   Body               HWFET      UDDS      WLTP
-  AWD SUV           4.73      5.86      6.22
-  Sedan             2.94      3.85      3.96
-  Hatchback         2.77      3.41      3.64
-  Pickup            6.30      7.26      8.06
+  AWD SUV           4.70      5.73      6.07
+  Sedan             2.93      3.84      3.91
+  Hatchback         2.77      3.40      3.60
+  Crossover         3.73      4.62      4.87
+  Pickup            6.25      7.07      7.83
+  Van / MPV         5.18      6.02      6.59
 ```
 
 The findings are reassuringly boring, which is the point:
@@ -806,8 +881,8 @@ The findings are reassuringly boring, which is the point:
    to the nearest km/h on peak speed - faithful enough to report comparable economy without
    fabricating the exact trace.
 2. **The home-grown cycles were representative all along.** The standardized numbers sit in the same
-   band and the same body-ordering as the synthetic ones (the AWD SUV's WLTP ~6.2 L/100km is the
-   expected step up from its steady synthetic-highway 4.62, because WLTP folds demanding urban and
+   band and the same body-ordering as the synthetic ones (the AWD SUV's WLTP ~6.1 L/100km is the
+   expected step up from its steady synthetic-highway 4.46, because WLTP folds demanding urban and
    extra-high-speed phases into one trip). No earlier conclusion shifts.
 3. **Every body completes every regulatory cycle with zero capability shortfalls** - the powertrain
    is comfortable across the full type-approval envelope, not just the synthetic duty it was tuned on.
@@ -834,10 +909,10 @@ lengthens the warm-up. Because the surcharge rides on an existing warm run, no v
 ```
 === Cold-start fuel penalty (Mixed, -10C) ===
   Body          Warm   Cold   Penalty  Engine-on
-  AWD SUV       2.41   2.88  +19.4%    143s
-  Sedan         0.41   0.62  +50.5%     35s
-  Pickup        4.52   4.84  + 7.0%    427s
-  Van / MPV     2.90   3.17  + 9.3%    372s
+  AWD SUV       2.35   2.80  +19.3%    143s
+  Sedan         0.40   0.60  +50.4%     35s
+  Pickup        4.23   4.53  + 7.1%    427s
+  Van / MPV     2.77   3.02  + 9.3%    372s
 ```
 
 Findings: (1) **urban is pure-EV** -- the engine never starts, so the cold-start penalty is *zero*
@@ -859,10 +934,10 @@ reproduces the validated number.
 ```
 === Fleet payload sensitivity (driver-only -> full load) ===
   Body          +kg full  Solo L  Full L  Penalty  Capable
-  AWD SUV          475    2.51    2.99  +19.3%   yes
-  Hatchback        475    0.37    0.48  +30.3%   yes
-  Crossover        475    1.13    1.59  +40.8%   yes
-  Pickup           475    4.62    5.18  +11.9%   yes
+  AWD SUV          475    2.44    2.91  +19.2%   yes
+  Hatchback        475    0.36    0.47  +30.1%   yes
+  Crossover        475    1.10    1.55  +41.2%   yes
+  Pickup           475    4.32    4.84  +11.8%   yes
 ```
 
 Findings: a full load (+475 kg) adds **12-41% fuel**, the largest *percentage* on the light bodies
@@ -909,14 +984,126 @@ config, so life fraction 0 reproduces the validated figures exactly.
 ```
 === Fleet drivetrain ageing (new -> end of life) ===
   Body          Fuel new->EOL    Range new->EOL   Drift
-  AWD SUV       2.41-> 3.47       52->   40 km   +44.3% / -23.3%
-  Crossover     1.04-> 2.07       64->   49 km   +98.9% / -23.3%
-  Pickup        4.52-> 5.70       44->   33 km   +26.1% / -23.3%
+  AWD SUV       2.35-> 3.39       52->   40 km   +44.4% / -23.3%
+  Crossover     1.01-> 2.01       64->   49 km   +99.7% / -23.3%
+  Pickup        4.23-> 5.32       44->   33 km   +25.6% / -23.3%
 ```
 
 Findings: **EV range fades a consistent ~23%** across all bodies (capacity-fade led), and **fuel
 drifts up** over life -- large in percent only on the light bodies (small denominator), modest in
 absolute litres. The new-vehicle point reproduces the validated fuel to six decimals, so nothing
 regresses. Locked by `DegradationTest` and `verify.py`, reproduced in `main.py`.
+
+---
+
+## Gate 1 bench acceptance criteria (PHOENIX-X12 storyboard → lab targets)
+
+The 20-panel storyboard in [designs/create the scenes use the image as the idea concept.png](../designs/create%20the%20scenes%20use%20the%20image%20as%20the%20idea%20concept.png) defines the production X12 ring. The **Seed-phase lab rig tests a single power cartridge first**; the table below maps storyboard numbers to measurable bench acceptance criteria with initial go/no-go tolerances.
+
+| Storyboard panel | Spec (concept) | Bench instrument | Acceptance target | Tolerance | Twin module |
+|------------------|----------------|------------------|-------------------|-----------|-------------|
+| 10 Free-piston motion | ±25 mm dual-sided stroke | LVDT / laser piston position | 50 mm total stroke | ±2 mm | `single_cylinder.FreePistonConfig` |
+| 11 Linear generator | 78 kW per cartridge (medium tier) | Power analyser on DC bus | ≥78 kW × load fraction | −8 kW × load | `_bench_electrical_power_kw()` |
+| 13 Thermal heat map | 800 °C core | Optical pyrometer / thermocouple | ≥800 °C peak gas | −100 °C | `_estimate_core_temp_c()` surrogate |
+| 12 Magnetic bearing | 0.03 mm stability | Eddy-current displacement sensor | ≤0.03 mm runout | +0.02 mm | `_bearing_runout_mm()` |
+| 14 Exhaust collector | 620 °C exhaust | Exhaust thermocouple ring | ≥620 °C | −80 °C | `_estimate_exhaust_temp_c()` |
+| ERS §4.5 | >95 % generator efficiency | Calibrated load bank | ≥95 % piston→electrical | — | `ATPEConfig.generator_efficiency` |
+| ERS §4.5 | Fuel→electrical at sweet spot | BSFC map overlay | ≥28 % electric efficiency | — | `simulate_1d_combustion()` |
+
+Run the digital acceptance check:
+
+```python
+from digital_twin import gate1_bench_at_load, gate1_matrix_report, run_gate1_matrix
+
+r = gate1_bench_at_load(prefer_cantera=False, tier_index=1)
+print(r.passed, r.measurement.stroke_mm, r.measurement.peak_power_kw)
+
+# Full 48-cell matrix + report
+print(gate1_matrix_report(run_gate1_matrix(prefer_cantera=False)))
+```
+
+Export spreadsheet rows:
+
+```powershell
+.venv\Scripts\python.exe scripts\export_gate1_matrix.py
+# → docs/evidence-pack/GATE1-VIRTUAL-BENCH-MATRIX.csv
+```
+
+The medium tier uses the PHOENIX-X12 **50 mm stroke** (±25 mm opposed motion). Full ring targets (12×78 kW = 954 kW, 800 VDC bus) are Gate 4 scope; Gate 1 validates one cartridge before scaling.
+
+---
+
+## Virtual Gate 4 multi-cylinder scaling (layout search)
+
+Before building a synchronised ring, the twin can search **cartridge-count layouts** without hardware:
+
+| Study | What it varies | Ranking objective |
+|-------|----------------|-------------------|
+| **X-ring tier mixes** | For each of X4, X6, X8, X10, X12, X14, X16: every non-negative micro/medium/large split summing to N | ERS pass, then highway CS fuel, then cylinder count |
+| **Rating profiles** | **storyboard** (20 / 78 / 120 kW per cartridge) and **phase1** (7.5 / 40 / 60 kW) | Same scoring; storyboard = production nameplate, phase1 = validated SUV stack |
+| **Phase-1 open sweep** | All mixes from 2–16 cylinders (not fixed ring size) | Finds global optimum under vehicle cartridge ratings |
+
+```python
+from digital_twin import (
+    gate4_scaling_report,
+    run_ring_size_study,
+    run_full_gate4_study,
+    DEFAULT_RING_SIZES,
+)
+
+print(gate4_scaling_report())
+
+storyboard = run_ring_size_study(DEFAULT_RING_SIZES, rating_profile="storyboard")
+print(storyboard.best_per_ring())  # sweet spot per X{N}
+```
+
+```powershell
+.venv\Scripts\python.exe scripts\export_gate4_scaling.py
+# → docs/evidence-pack/GATE4-VIRTUAL-SCALING.csv
+```
+
+CSV columns include `ring_name`, `tier_mix_kind` (`mixed`, `homogeneous_micro`, …), `rating_profile`, fuel, and ERS pass count — filter in Excel per ring size.
+
+**July 2026 simulation notes:**
+
+- **All-micro homogeneous rings (N/0/0) are simulation artifacts**, not design recommendations: tier-1 table efficiency (0.44) beats medium (0.41) on paper and passes ERS, but contradicts the medium-cartridge X12 architecture. Filter CSV with `design_aligned=true`.
+- **Three-tier thesis:** `gate4_tier_architecture_table()` and `GATE4-TIER-ADVANTAGE.csv` compare single-, two-, and three-tier depth. No homogeneous single-tier passes 9/9 ERS on the Phase-1 vehicle; validated **`4/2/2`** does. Storyboard ring tables show **highway-min** vs **all-three-tier** picks side by side. Fuel columns use **charge-sustaining SoC (0.55)** — reference highway **~4.46 L/100 km**, same as fleet/`verify.py`.
+- **Canonical X12 (0/12/0 medium)** is the production target but **fails 7/9 ERS** on current medium-tier η — mixed layouts with ≥1 medium pass; hardware must raise medium BTE or blend tiers.
+- Under **phase1** kW, layouts need **≥2 tier sizes**; the validated **`4/2/2`** reference stays competitive.
+
+This is a **design hint**, not a manufacturing sign-off; ring phasing and NVH are not modelled.
+
+---
+
+## Seed-phase bench test matrix (months 0–18)
+
+Links each lab deliverable to the twin headline it validates or falsifies.
+
+| Step | Hardware deliverable | Instruments | Twin headline validated | Pass criterion |
+|------|---------------------|-------------|-------------------------|----------------|
+| 1 | Single free-piston cartridge rig | Pressure transducer, LVDT, load bank, fuel flow meter | Gate 1 stroke, IMEp, efficiency | Virtual matrix 48/48 pass in simulation; rig data ≥5/6 checks |
+| 2 | Linear generator integration | DC power analyser, oscilloscope | ERS generator >95 % | Measured η_gen ≥ 0.95 at rated load |
+| 3 | Magnetic bearing subsystem | Displacement probes | Storyboard 0.03 mm stability | Peak runout ≤ 0.05 mm under combustion |
+| 4 | Single-rotor PCMRITMS bench | Torque transducer, speed encoder | Rotor 242.8 N·m, +34.9 % boost | `verify.py` rotor checks ±5 % of measured |
+| 5 | Integrated electrical bench | HV DC bus monitor, battery cycler | Coupled buffer 140 kW burst | Buffer delivers rated burst without shortfall |
+| 6 | Charge-sustaining fuel economy | Chassis dyno (mule prep) | SUV highway 4.46 L/100km | Within ±10 % of twin at same cycle |
+| 7 | Fault injection | Controller + one cylinder disabled | ERS §4.8 graceful degradation | All 9/9 ERS checks pass (`fleet_graceful_degradation()`) |
+| 8 | ICE head-to-head (reference) | Same dyno, conventional 2.0 L turbo mule | ATPE 28 % fuel saving (mixed) | ATPE fuel < ICE fuel on identical trace |
+
+**Priority order for Seed funding narrative:** steps 1–3 (Gate 1–2 physics) → step 4 (PCMRITMS bench) → step 6 (first honest fuel number) → step 7 (reliability story) → step 8 (competitive claim).
+
+---
+
+## Move N — conventional ICE benchmark (ATPE vs 2.0 L turbo)
+
+`ice_benchmark.py` runs an otherwise-identical vehicle with a representative 2.0 L turbo BSFC curve swapped in place of ATPE. Headline result (AWD SUV, mixed cycle): **ATPE ~28 % lower fuel** than the conventional engine on the same route, controller, buffer, and battery.
+
+Locked by `verify.py` and reproduced in `main.py`. Pure stdlib.
+
+---
+
+## Designs / visual storyboard — deferred
+
+The 20-scene PHOENIX-X12 storyboard is the design vision ([designs/](../designs/)). Reproducible code exists for ~3 scenes (Blender static model, two matplotlib animations). **Full scene pipeline is deferred** until bench data exists or a visual demo is needed for funding. Minimum viable path if required: Blender hero render (Scene 1) + five key panels (1, 2, 4, 8, 16, 20) — not all 20 AI-style GIFs. See [PROJECT-STATUS-AND-NEXT-STEPS.md](PROJECT-STATUS-AND-NEXT-STEPS.md).
 
 ---

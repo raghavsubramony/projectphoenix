@@ -39,14 +39,15 @@ $(\,n,\ V_d,\ P_{\text{elec}}^{\max},\ \eta_{\text{th}},\ f_{\text{osc}}\,)$:
 | 2 (medium) | 2 | 300 | 80  | 0.41 | 45–60 | DI spark, Miller |
 | 3 (large)  | 2 | 750 | 120 | 0.38 | 30–45 | DI spark + cooled EGR |
 
-**Generation model.** A tier produces electrical power $P_{gen}$ at fuel power
-$P_{fuel} = P_{gen} / \eta_{th}$. Because pistons are free, each tier holds its *own* optimal
-operating point, so $\eta_{th}$ is treated as flat across that tier's active band (the central
+**Generation model.** Active tiers are filled from smallest upward until demand is met. Each tier
+$i$ contributes electrical power $P_i$ at fuel power $P_{fuel,i} = P_i / \eta_i$; total fuel power
+is $\sum P_{fuel,i}$ (energy-weighted blend). Because pistons are free, each tier holds its *own*
+optimal operating point, so $\eta_i$ is treated as flat across that tier's active band (the central
 refinement vs. a crank engine's wide, lossy BSFC island).
 
 **Tier selection** is discrete and additive: the controller picks the smallest tier set whose
-combined $P_{\text{elec}}^{\max}$ covers the generation setpoint, biased toward the most
-efficient tier that suffices.
+combined $P_{\text{elec}}^{\max}$ covers the generation setpoint. `active_tier` telemetry reports
+the governing (largest active) tier.
 
 ## 3. PCMRITMS — Parameterized Definition
 
@@ -105,7 +106,7 @@ first**, then charge the battery.
 
 The simulation enforces, every timestep:
 - **Power balance:** $P_{gen} + P_{batt} + P_{buffer} = P_d + P_{losses}$ (residual ⇒ flagged shortfall).
-- **Energy bookkeeping:** fuel energy in = $\int P_{gen}/\eta_{th}\,dt$; buffer/battery energies integrate their net flows with efficiency penalties applied on every transfer.
+- **Energy bookkeeping:** fuel energy in = $\int \sum_i (P_i/\eta_i)\,dt$ over active tiers; buffer/battery energies integrate their net flows with efficiency penalties applied on every transfer.
 - **Bounded states:** SoC ∈ [0,1], buffer energy ∈ [0, $E_{\max}$], never violated.
 
 These invariants are the difference between a marketing animation and an engineering model.

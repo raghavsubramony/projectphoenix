@@ -1,0 +1,34 @@
+﻿[15:56:34] Phoenix V3 validation pack
+[15:56:34] Repo:    C:\Users\c52444a\Desktop\project Phoenix
+[15:56:34] Output:  C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_155634
+[15:56:34] 
+[15:56:36] === pytest_energy ===
+[15:56:36] CMD: py -3 -m pytest tests/test_phoenix_v3_energy.py -v
+[15:56:41] OK: pytest_energy
+[15:56:41] 
+[15:56:42] === best_tuning_audit ===
+[15:56:42] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --cycles 12
+[15:56:45] OK: best_tuning_audit
+[15:56:45] 
+[15:56:46] === asymmetry_sweep ===
+[15:56:46] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --sweep-asymmetry --cycles 10
+[15:56:48] OK: asymmetry_sweep
+[15:56:48] 
+[15:56:49] === disturbance_sweep ===
+[15:56:49] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --sweep-disturbance --cycles 10
+[15:56:53] OK: disturbance_sweep
+[15:56:53] 
+[15:56:54] === transient_faults ===
+[15:56:54] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --transient --cycles 12 --fault-cycle 3
+[15:56:57] OK: transient_faults
+[15:56:57] 
+[15:56:58] === extraction_sweep ===
+[15:56:58] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --sweep-extraction --cycles 8
+[15:57:00] OK: extraction_sweep
+[15:57:00] 
+[15:57:00] Copied: designs\phoenix_v3_cycle_dashboard.png
+[15:57:00] Copied: designs\phoenix_v3_scavenge_phases.png
+[15:57:00] Copied: designs\phoenix_v3_sweep_extraction.png
+[15:57:00] Copied: designs\phoenix_v3_best_tuning_v2.json
+[15:57:00] Validation pack complete.
+[15:57:00] Artifacts: C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_155634

@@ -35,6 +35,9 @@ class SingleCylinderGate1Config:
     enabled: bool = False
     prefer_cantera: bool = True
     reference_speed_rpm: float = 2600.0
+    use_phoenix_v3: bool = False
+    tuning_path: str | None = None
+    v3_cycles: int = 16
 
 
 @dataclass(frozen=True)
@@ -327,6 +330,48 @@ def with_gate1(
         reference_speed_rpm=reference_speed_rpm,
     )
     return replace(cfg, atpe=replace(cfg.atpe, gate1=gate1))
+
+
+def with_phoenix_v3(
+    cfg: TwinConfig,
+    *,
+    tuning_path: str | None = None,
+    reference_load_fraction: float = 0.75,
+    v3_cycles: int = 24,
+) -> TwinConfig:
+    """Enable Phoenix V3 cartridge physics for ATPE tier efficiencies."""
+    from dataclasses import replace as dc_replace
+
+    from .phoenix_v3_bridge import measure_v3_cartridge, resolve_best_tuning_path
+
+    path = resolve_best_tuning_path(tuning_path)
+    metrics = measure_v3_cartridge(
+        load_fraction=reference_load_fraction,
+        cycles=v3_cycles,
+        tuning_path=path,
+    )
+    ref_eta = metrics.net_efficiency
+    old_tiers = cfg.atpe.tiers
+    if not old_tiers:
+        return cfg
+    ref_index = min(1, len(old_tiers) - 1)
+    ref_table = old_tiers[ref_index].thermal_efficiency
+    scale = ref_eta / max(ref_table, 1e-9)
+    new_tiers = tuple(
+        dc_replace(t, thermal_efficiency=max(0.10, min(t.thermal_efficiency * scale, 0.58)))
+        for t in old_tiers
+    )
+    gate1 = SingleCylinderGate1Config(
+        enabled=True,
+        use_phoenix_v3=True,
+        tuning_path=str(path) if path else None,
+        v3_cycles=v3_cycles,
+        prefer_cantera=False,
+    )
+    return dc_replace(
+        cfg,
+        atpe=dc_replace(cfg.atpe, tiers=new_tiers, gate1=gate1),
+    )
 
 
 def with_battery_thermal(

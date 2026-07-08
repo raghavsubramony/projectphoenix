@@ -24,11 +24,18 @@ class GenerationResult:
     co2_kg: float           # tailpipe CO2 this step
     active_tier: str        # name of the governing (largest active) tier
     active_index: int       # -1 = engine off, else tier index
-    efficiency: float       # instantaneous thermal efficiency (0 if off)
+    efficiency: float       # blended fuel->electrical efficiency (0 if off)
     imep_bar: float = 0.0
     knock_index: float = 0.0
     peak_pressure_bar: float = 0.0
     predicted_tdc_mm: float = 0.0
+
+
+@dataclass(frozen=True)
+class _TierShare:
+    index: int
+    tier: TierSpec
+    electric_w: float
 
 
 class ATPE:
@@ -60,6 +67,94 @@ class ATPE:
         top = len(self.cfg.tiers) - 1
         return top, self.cfg.tiers[top]
 
+    def _tier_allocations(self, setpoint_w: float) -> list[_TierShare]:
+        """Fill tiers from smallest upward until the setpoint is covered."""
+        remaining = setpoint_w
+        shares: list[_TierShare] = []
+        for i, tier in enumerate(self.cfg.tiers):
+            if remaining <= 1e-9:
+                break
+            share_w = min(remaining, tier.max_electric_w)
+            shares.append(_TierShare(i, tier, share_w))
+            remaining -= share_w
+        return shares
+
+    def _tier_electric_efficiency(
+        self,
+        share: _TierShare,
+        gate1_enabled: bool,
+    ) -> tuple[float, float, float, float, float]:
+        """Return fuel->electrical η and optional Gate 1 telemetry for one tier."""
+        if not gate1_enabled:
+            return share.tier.thermal_efficiency, 0.0, 0.0, 0.0, 0.0
+
+        gate1 = self.cfg.gate1
+        assert gate1 is not None
+        load_fraction = max(
+            0.05,
+            min(1.0, share.electric_w / max(1.0, share.tier.max_electric_w)),
+        )
+        if gate1.use_phoenix_v3:
+            from .phoenix_v3_bridge import phoenix_v3_gate1_point
+
+            point = phoenix_v3_gate1_point(
+                load_fraction,
+                tuning_path=gate1.tuning_path,
+                cycles=gate1.v3_cycles,
+                generator_efficiency=self.cfg.generator_efficiency,
+            )
+        else:
+            point = gate1_point_from_load(
+                speed_rpm=gate1.reference_speed_rpm,
+                load_fraction=load_fraction,
+                displacement_cc=share.tier.displacement_cc,
+                generator_efficiency=self.cfg.generator_efficiency,
+                prefer_cantera=gate1.prefer_cantera,
+                tier_index=share.index,
+            )
+        efficiency = max(0.10, min(point.electric_efficiency, 0.58))
+        return (
+            efficiency,
+            point.imep_bar,
+            point.knock_index,
+            point.peak_pressure_bar,
+            point.predicted_tdc_mm,
+        )
+
+    def _combined_generation(
+        self,
+        electric_w: float,
+    ) -> tuple[float, float, float, float, float, float]:
+        """Blend active tiers; return fuel power and energy-weighted telemetry."""
+        gate1_enabled = (
+            self.cfg.gate1 is not None and self.cfg.gate1.enabled
+        )
+        fuel_power_w = 0.0
+        imep_bar = 0.0
+        knock_index = 0.0
+        peak_pressure_bar = 0.0
+        predicted_tdc_mm = 0.0
+        for share in self._tier_allocations(electric_w):
+            eta, imep, knock, peak_p, tdc = self._tier_electric_efficiency(
+                share, gate1_enabled,
+            )
+            fuel_power_w += share.electric_w / eta
+            if gate1_enabled:
+                weight = share.electric_w / electric_w
+                imep_bar += imep * weight
+                knock_index += knock * weight
+                peak_pressure_bar += peak_p * weight
+                predicted_tdc_mm += tdc * weight
+        efficiency = electric_w / fuel_power_w if fuel_power_w > 0.0 else 0.0
+        return (
+            fuel_power_w,
+            efficiency,
+            imep_bar,
+            knock_index,
+            peak_pressure_bar,
+            predicted_tdc_mm,
+        )
+
     def generate(self, setpoint_w: float, dt_s: float) -> GenerationResult:
         """Generate electricity toward `setpoint_w`, returning fuel/emissions."""
         setpoint_w = max(0.0, min(setpoint_w, self.max_electric_w))
@@ -79,32 +174,15 @@ class ATPE:
             return GenerationResult(0.0, 0.0, 0.0, 0.0, "engine off", -1, 0.0)
 
         electric_w = setpoint_w
-        efficiency = tier.thermal_efficiency
-        imep_bar = 0.0
-        knock_index = 0.0
-        peak_pressure_bar = 0.0
-        predicted_tdc_mm = 0.0
+        (
+            fuel_power_w,
+            efficiency,
+            imep_bar,
+            knock_index,
+            peak_pressure_bar,
+            predicted_tdc_mm,
+        ) = self._combined_generation(electric_w)
 
-        gate1 = self.cfg.gate1
-        if gate1 is not None and gate1.enabled:
-            tier_cap = max(1.0, self._cumulative[index])
-            load_fraction = max(0.05, min(1.0, electric_w / tier_cap))
-            point = gate1_point_from_load(
-                speed_rpm=gate1.reference_speed_rpm,
-                load_fraction=load_fraction,
-                displacement_cc=tier.displacement_cc,
-                generator_efficiency=self.cfg.generator_efficiency,
-                prefer_cantera=gate1.prefer_cantera,
-                tier_index=index,
-            )
-            # Keep Gate 1 map physically plausible and near tier baseline.
-            efficiency = max(0.10, min(point.electric_efficiency, 0.58))
-            imep_bar = point.imep_bar
-            knock_index = point.knock_index
-            peak_pressure_bar = point.peak_pressure_bar
-            predicted_tdc_mm = point.predicted_tdc_mm
-
-        fuel_power_w = electric_w / efficiency
         fuel_energy_j = fuel_power_w * dt_s
         fuel_kg = fuel_energy_j / _LHV_J_PER_KG
         fuel_l = fuel_kg / GASOLINE_DENSITY_KG_PER_L

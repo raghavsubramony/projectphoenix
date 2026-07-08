@@ -51,6 +51,12 @@ from digital_twin import (
     GridConfig,
     fleet_degradation,
     degradation_table,
+    benchmark_summary,
+    wltp_benchmark,
+    graceful_degradation_table,
+    fleet_graceful_degradation,
+    gate1_matrix_report,
+    gate4_scaling_report,
     tco_table,
     stress_bodies,
     stress_unmet_launch_kj,
@@ -327,6 +333,37 @@ def main(quick: bool = False) -> None:
     print(degradation_table(fleet_degradation()))
     print("  => EV range fades a consistent ~23% (capacity-led); fuel drifts up,")
     print("     large in % only on the light bodies (small denominator).\n")
+
+    print("# ATPE vs conventional 2.0L turbo ICE (Move N)\n")
+    print("  Identical vehicle, buffer, battery, and controller — only the")
+    print("  engine changes. Answers 'compared to what?' on identical routes.\n")
+    print(benchmark_summary())
+    print()
+    print(wltp_benchmark())
+    print()
+
+    print("# Graceful degradation — one cylinder offline (ERS §4.8)\n")
+    print("  Fault tolerance: remove one cylinder from each tier in turn and")
+    print("  re-run the ERS acceptance harness.\n")
+    print(graceful_degradation_table(fleet_graceful_degradation()))
+    print()
+
+    print("# Virtual Gate 1 bench matrix (Track B — no lab rig required)\n")
+    print("  Systematic cartridge tests: speed × load × tier sweeps, sweet-spot")
+    print("  uncertainty bands, and vehicle fuel traced to per-cartridge physics.\n")
+    with _section("virtual gate 1 bench"):
+        print(gate1_matrix_report(uncertainty_trials=24 if quick else 64))
+    print()
+
+    print("# Virtual Gate 4 multi-cylinder scaling (X-ring layout search)\n")
+    print("  Every tier mix at X4, X6, X8, X10, X12, X14, X16 — phase1 and")
+    print("  storyboard kW profiles; rank on ERS + fuel + cylinder count.\n")
+    with _section("virtual gate 4 scaling"):
+        print(gate4_scaling_report(
+            ring_sizes=(4, 6, 8) if quick else (4, 6, 8, 10, 12, 14, 16),
+            include_phase1_open=not quick,
+        ))
+    print()
 
 
 def _demo_closed_loop_rotor() -> None:

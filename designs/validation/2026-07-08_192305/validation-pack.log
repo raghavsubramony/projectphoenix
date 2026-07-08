@@ -1,0 +1,46 @@
+﻿[19:23:05] Phoenix V3 validation pack
+[19:23:06] Repo:    C:\Users\c52444a\Desktop\project Phoenix
+[19:23:06] Output:  C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_192305
+[19:23:06] 
+[19:23:08] === pytest_energy ===
+[19:23:08] CMD: py -3 -m pytest tests/test_phoenix_v3_energy.py -v
+[19:23:12] OK: pytest_energy
+[19:23:12] 
+[19:23:12] === canonical_efficiency ===
+[19:23:12] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3/validation/report.py --best-tuning --cycles 24 --json-out C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_192305\canonical_efficiency.json
+[19:23:14] OK: canonical_efficiency
+[19:23:14] 
+[19:23:15] === best_tuning_audit ===
+[19:23:15] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --cycles 12 --canonical-report
+[19:23:18] OK: best_tuning_audit
+[19:23:18] 
+[19:23:19] === actuator_limits ===
+[19:23:19] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --actuator-suite --cycles 24
+[19:23:21] OK: actuator_limits
+[19:23:21] 
+[19:23:22] === stochastic_combustion ===
+[19:23:22] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --stochastic-suite --cycles 30
+[19:23:29] OK: stochastic_combustion
+[19:23:29] 
+[19:23:30] === asymmetry_sweep ===
+[19:23:30] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --sweep-asymmetry --cycles 10
+[19:23:32] OK: asymmetry_sweep
+[19:23:32] 
+[19:23:33] === disturbance_sweep ===
+[19:23:33] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --sweep-disturbance --cycles 10
+[19:23:39] OK: disturbance_sweep
+[19:23:39] 
+[19:23:40] === transient_faults ===
+[19:23:40] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --transient --cycles 12 --fault-cycle 3
+[19:23:43] OK: transient_faults
+[19:23:43] 
+[19:23:44] === extraction_sweep ===
+[19:23:44] CMD: C:\Users\c52444a\Desktop\project Phoenix\.venv-design\Scripts\python.exe designs/phoenix_v3_simulation.py --headless --best-tuning --sweep-extraction --cycles 8
+[19:23:46] OK: extraction_sweep
+[19:23:46] 
+[19:23:46] Copied: designs\phoenix_v3_cycle_dashboard.png
+[19:23:46] Copied: designs\phoenix_v3_scavenge_phases.png
+[19:23:46] Copied: designs\phoenix_v3_sweep_extraction.png
+[19:23:46] Copied: designs\phoenix_v3_best_tuning_v2.json
+[19:23:46] Validation pack complete.
+[19:23:46] Artifacts: C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_192305

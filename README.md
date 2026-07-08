@@ -32,6 +32,15 @@ optionally use Cantera for chemistry-informed estimates when installed.
 # check it against its validated value, and run the full test suite:
 .venv\Scripts\python.exe verify.py
 
+# Virtual Gate 1 bench matrix (CSV for spreadsheets + console report):
+.venv\Scripts\python.exe scripts\export_gate1_matrix.py
+
+# Virtual Gate 4 multi-cylinder layout sweep:
+.venv\Scripts\python.exe scripts\export_gate4_scaling.py
+
+# Investor / grant evidence pack (executive summary + virtual bench):
+.venv\Scripts\python.exe scripts\export_evidence_pack.py
+
 # Run the regression test suite:
 .venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
@@ -53,17 +62,18 @@ from every analysis layer (Moves A–I) into one place
   Body          Fuel   Cost/km  (5-95%)        CO2   Batt    WLTP  Season
                 L/100  EUR/km   EUR/km        g/km   kW/C    L/100   swing
   ------------------------------------------------------------------------
-  AWD SUV       2.70   0.073  [0.056-0.091]  104.6   90/4.5   6.22  13.9%
-  Sedan         0.67   0.041  [0.031-0.053]   47.6   60/3.0   3.96  22.4%
-  Hatchback     0.57   0.039  [0.030-0.052]   44.9   60/3.0   3.64  22.8%
-  Crossover     1.15   0.048  [0.041-0.062]   61.0   70/3.5   4.96  20.5%
-  Pickup        4.03   0.094  [0.078-0.128]  142.0   60/3.0   8.06  15.2%
-  Van / MPV     3.06   0.079  [0.067-0.110]  114.9   60/3.0   6.76  18.0%
+  AWD SUV       2.61   0.072  [0.066-0.091]  102.1   90/4.5   6.07  11.6%
+  Sedan         0.64   0.040  [0.033-0.047]   46.8   60/3.0   3.91  22.3%
+  Hatchback     0.55   0.039  [0.031-0.051]   44.2   60/3.0   3.60  22.7%
+  Crossover     1.11   0.048  [0.044-0.063]   59.9   70/3.5   4.87  20.2%
+  Pickup        3.86   0.092  [0.078-0.136]  137.2   60/3.0   7.83  14.8%
+  Van / MPV     2.95   0.077  [0.066-0.094]  111.8   60/3.0   6.59  16.6%
 
   Fleet-wide headline facts:
     PCMRITMS rotor      : 242.8 N.m peak (+34.9%), 50.2 kW surge lifts the buffer to 140 kW brief burst
-    Battery longevity   : 0 replacements over vehicle life; embodied CO2 4.6% of lifecycle (SUV)
+    Battery longevity   : 0 replacements over vehicle life; embodied CO2 4.7% of lifecycle (SUV)
     Climate robustness  : thermal derate from -10C to +40C? no; regulatory shortfalls: 0
+    ATPE vs 2.0L turbo  : 27.9% fuel saving (AWD SUV mixed cycle, identical vehicle stack)
 ```
 
 Each column is the headline of one layer: **Fuel/Cost/CO₂** (lifecycle
@@ -90,6 +100,9 @@ echoes the same validated numbers.
 | One-table executive summary across every layer | `digital_twin/summary.py` |
 | PCMRITMS rotor model (reproduces the whitepaper headline) | `digital_twin/pcmritms_rotor.py` |
 | Rotor → buffer coupling (rotor physics sets a real buffer rating) | `digital_twin/pcmritms_coupling.py` |
+| Gate 1 virtual bench matrix (48 cells, CSV, uncertainty) | `digital_twin/gate1_matrix.py` |
+| Gate 4 virtual layout search (X-ring tier mixes, CSV) | `digital_twin/gate4_scaling.py` |
+| Single-cartridge combustion + bench acceptance | `digital_twin/single_cylinder.py` |
 
 ## Validated invariants (locked by `tests/`)
 
@@ -99,7 +112,7 @@ echoes the same validated numbers.
   raising the buffer's brief-burst discharge from 90 kW to **140 kW**.
 - **All six bodies pass all** class-appropriate ERS targets (light/mid bodies on a
   ~150 kW motor; heavy SUV/pickup on 160 kW).
-- **AWD SUV highway = 4.62 L/100 km**; urban is fully electric across the fleet.
+- **AWD SUV highway = 4.46 L/100 km** (charge-sustaining); urban is fully electric across the fleet.
 - **Zero shortfalls** on every standard cycle.
 
 ## Key data finding: rotor coupling shapes peaks, not energy

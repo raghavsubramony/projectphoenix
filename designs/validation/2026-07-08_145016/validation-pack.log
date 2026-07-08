@@ -1,0 +1,6 @@
+﻿[14:50:16] Phoenix V3 validation pack
+[14:50:16] Repo:    C:\Users\c52444a\Desktop\project Phoenix
+[14:50:16] Output:  C:\Users\c52444a\Desktop\project Phoenix\designs\validation\2026-07-08_145016
+[14:50:16] 
+[14:50:18] === pytest_energy ===
+[14:50:18] CMD: py -3 -m pytest tests/test_phoenix_v3_energy.py -v

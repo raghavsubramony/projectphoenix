@@ -1,0 +1,16 @@
+{
+  "definition": "late_steady_window_mean: mean(Welec/Efuel) over the last 10% of steady cycles (fuel > 50 J, BDC >= 85% capture_min, cycle_index >= capture_startup)",
+  "cycles": 24,
+  "metrics": {
+    "definition": "late_steady_window_mean: mean(Welec/Efuel) over the last 10% of steady cycles (fuel > 50 J, BDC >= 85% capture_min, cycle_index >= capture_startup)",
+    "window_cycles": 2,
+    "steady_cycles": 20,
+    "net_fuel_to_electric": 0.5404992841344165,
+    "capture_fraction": 0.5026060891166538,
+    "mean_elec_energy_j": 470.83498000147256,
+    "mean_fuel_energy_j": 871.1112,
+    "mean_bdc_mm": 19.809699355857717,
+    "energy_balance_valid": true,
+    "raw_boundary_valid": true
+  }
+}

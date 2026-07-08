@@ -14,7 +14,9 @@ This folder captures the engineering concept, analysis, and business case for an
 | File | Contents |
 |------|----------|
 | [PROJECT-STATUS-AND-NEXT-STEPS.md](PROJECT-STATUS-AND-NEXT-STEPS.md) | **Plain-English status report** — where the project stands vs the plan, what is done, what comes next |
-| [PLAIN-ENGLISH-OVERVIEW.md](PLAIN-ENGLISH-OVERVIEW.md) | No-jargon tour of Moves A–M and what we proved |
+| [DEVELOPMENT-PLAYBOOK.md](DEVELOPMENT-PLAYBOOK.md) | **Funding + IP + Gate 1 rig + pitch package** — parallel twin & hardware development |
+| [GATE1-LAB-RIG-DESIGN.md](GATE1-LAB-RIG-DESIGN.md) | **Gate 1 lab rig design** — phased α/β/γ bench, instrumentation, safety, 48-cell test protocol |
+| [PLAIN-ENGLISH-OVERVIEW.md](PLAIN-ENGLISH-OVERVIEW.md) | No-jargon tour of Moves A–M/N, gates, and current status |
 | [01-atpe-concept.md](01-atpe-concept.md) | ATPE concept analysis — architecture, tiers, free-piston generation, AI logic, efficiency, challenges |
 | [02-pcmritms-opinion.md](02-pcmritms-opinion.md) | Opinion on the PCMRITMS inertial torque buffer concept |
 | [03-integration-viability.md](03-integration-viability.md) | Viability of integrating ATPE + PCMRITMS into one powertrain |
@@ -27,6 +29,10 @@ This folder captures the engineering concept, analysis, and business case for an
 | [10-pcmritms-whitepaper-spec.md](10-pcmritms-whitepaper-spec.md) | Faithful extract of the PCMRITMS whitepaper (architecture, sizing, equations, results) |
 | [11-pcmritms-twin-alignment.md](11-pcmritms-twin-alignment.md) | How the whitepaper maps onto the twin + exact reproduction of its headline result |
 | [12-architecture-diagrams.md](12-architecture-diagrams.md) | In-repo Mermaid architecture diagrams (power flow, tier stack, cylinder module, rotor layout, control) + engine/cylinder/CAD design approach |
+| [whitepapers/](whitepapers/) | **Publish-ready whitepapers** (standalone data, no code refs) + PDF exports |
+| [13-atpe-whitepaper.md](13-atpe-whitepaper.md) | ATPE whitepaper — internal engineering copy (links to twin) |
+| [14-phoenix-integrated-whitepaper.md](14-phoenix-integrated-whitepaper.md) | Integrated whitepaper — internal engineering copy (links to twin) |
+| [15-patent-portfolio.md](15-patent-portfolio.md) | **Patent portfolio assessment** — invention families, filing sequence, count estimates (not legal advice) |
 
 ## Digital Twin
 

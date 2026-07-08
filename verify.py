@@ -4,6 +4,7 @@ Run with:
 
     .venv\\Scripts\\python.exe verify.py
     .venv\\Scripts\\python.exe verify.py --quiet     # summary only
+    .venv\\Scripts\\python.exe verify.py --quick      # smoke subset (~10 s)
 
 This is the single entry point that proves the whole concept reproduces. It:
 
@@ -58,6 +59,23 @@ from digital_twin import (
     simulate_torque_augmentation,
     stress_bodies,
     with_battery_thermal,
+    wltp_benchmark,
+    run_ice_fleet,
+    fleet_graceful_degradation,
+    gate1_bench_at_load,
+    PHOENIX_X12_STROKE_MM,
+    run_gate1_matrix,
+    gate1_bench_uncertainty,
+    gate1_vehicle_fuel_comparison,
+    run_gate4_sweep,
+    run_ring_size_study,
+    enumerate_ring_layouts,
+    DEFAULT_RING_SIZES,
+    is_design_aligned,
+    count_active_tiers,
+    evaluate_layout,
+    CylinderLayout,
+    REFERENCE_LAYOUT,
 )
 from dataclasses import replace
 from digital_twin.powertrain import Powertrain
@@ -116,7 +134,7 @@ def _check_fuel_economy() -> list[Check]:
     suv_hwy = next(c for (b, cy), c in cells.items()
                    if b == "AWD SUV" and "Highway" in cy)
     checks = [_approx("SUV highway fuel", suv_hwy.fuel_l_per_100km,
-                      4.62, 0.05, " L/100km")]
+                      4.46, 0.05, " L/100km")]
     # Urban must be pure-EV (zero fuel) for every body.
     urban_ev = all(abs(c.fuel_l_per_100km) < 1e-6
                    for (b, cy), c in cells.items() if "Urban" in cy)
@@ -302,10 +320,99 @@ def _check_summary() -> list[Check]:
     s = build_executive_summary(trials=16)
     ok = (abs(s.rotor_peak_nm - 242.8) < 0.5 and s.pack_replacements == 0
           and not s.derates_in_climate and s.regulatory_shortfalls == 0
-          and len(s.bodies) == 6)
+          and len(s.bodies) == 6 and s.graceful_degraded_pass
+          and s.ice_mixed_saving_pct > 0.0)
     checks.append(Check("Executive summary echoes the validated headlines",
                         ok, f"{len(s.bodies)} bodies, rotor "
-                        f"{s.rotor_peak_nm:.1f} N.m"))
+                        f"{s.rotor_peak_nm:.1f} N.m, ICE saving "
+                        f"{s.ice_mixed_saving_pct:.1f}%"))
+    suv = s.bodies[0]
+    checks.append(Check("Executive summary includes Moves J-M (SUV)",
+                        suv.cold_penalty_pct > 0.0 and suv.payload_penalty_pct > 0.0
+                        and suv.fuel_drift_pct > 0.0 and suv.range_loss_pct > 0.0,
+                        f"cold +{suv.cold_penalty_pct:.1f}%, payload "
+                        f"+{suv.payload_penalty_pct:.1f}%, drift "
+                        f"+{suv.fuel_drift_pct:.1f}%"))
+    return checks
+
+
+def _check_ice_benchmark() -> list[Check]:
+    checks: list[Check] = []
+    mixed = DriveCycles.mixed()
+    atpe = next(c for c in run_fleet(charge_sustaining_bodies(), [mixed])
+                if c.body == "AWD SUV")
+    ice = next(c for c in run_ice_fleet(cycles=[mixed])
+               if c.body == "AWD SUV")
+    saving = (100.0 * (ice.fuel_l_per_100km - atpe.fuel_l_per_100km)
+              / ice.fuel_l_per_100km if ice.fuel_l_per_100km > 0 else 0.0)
+    checks.append(Check("ATPE beats conventional ICE on mixed cycle (SUV)",
+                        atpe.fuel_l_per_100km < ice.fuel_l_per_100km,
+                        f"ATPE {atpe.fuel_l_per_100km:.2f} vs ICE "
+                        f"{ice.fuel_l_per_100km:.2f} L/100km (-{saving:.0f}%)"))
+    wltp = wltp_benchmark()
+    checks.append(Check("ICE benchmark report renders",
+                        "ATPE vs conventional" in wltp,
+                        f"{len(wltp)} chars"))
+    return checks
+
+
+def _check_graceful_degradation() -> list[Check]:
+    checks: list[Check] = []
+    results = fleet_graceful_degradation()
+    all_ok = all(r.all_passed for r in results)
+    checks.append(Check("One cylinder offline: all bodies pass ERS",
+                        all_ok,
+                        f"{sum(1 for r in results if r.all_passed)}/{len(results)} scenarios"))
+    tier1 = next(r for r in results if "Tier 1" in r.scenario and r.body == "AWD SUV")
+    checks.append(Check("Degraded stack loses peak power (Tier 1 fault)",
+                        tier1.peak_power_kw < 230.0,
+                        f"{tier1.peak_power_kw:.0f} kW peak"))
+    return checks
+
+
+def _check_gate1_bench() -> list[Check]:
+    checks: list[Check] = []
+    bench = gate1_bench_at_load(prefer_cantera=False, tier_index=1)
+    checks.append(Check("Gate 1 bench simulation produces measurements",
+                        bench.measurement.peak_power_kw > 0.0,
+                        f"{bench.measurement.peak_power_kw:.1f} kW, "
+                        f"stroke {bench.measurement.stroke_mm:.1f} mm"))
+    checks.append(Check("PHOENIX-X12 medium-tier stroke matches storyboard",
+                        abs(bench.measurement.stroke_mm - PHOENIX_X12_STROKE_MM) < 0.1,
+                        f"{bench.measurement.stroke_mm:.1f} mm vs "
+                        f"{PHOENIX_X12_STROKE_MM:.1f} mm"))
+    passed = sum(1 for c in bench.checks if c.passed)
+    checks.append(Check("Gate 1 bench checks are well-formed",
+                        len(bench.checks) >= 5,
+                        f"{passed}/{len(bench.checks)} criteria pass"))
+    return checks
+
+
+def _check_gate1_matrix() -> list[Check]:
+    checks: list[Check] = []
+    matrix = run_gate1_matrix(prefer_cantera=False)
+    checks.append(Check("Gate 1 virtual bench matrix has expected cells",
+                        matrix.total_cells == 48,
+                        f"{matrix.total_cells} cells"))
+    sweet = matrix.sweet_spot()
+    sweet_passed = sum(1 for c in sweet.bench.checks if c.passed)
+    checks.append(Check("Gate 1 sweet-spot bench produces checks",
+                        sweet_passed >= 5,
+                        f"{sweet_passed}/{len(sweet.bench.checks)} criteria pass"))
+    checks.append(Check("Gate 1 virtual bench matrix pass rate",
+                        matrix.pass_rate_pct >= 80.0,
+                        f"{matrix.cells_passed}/{matrix.total_cells} cells "
+                        f"({matrix.pass_rate_pct:.0f}%)"))
+    bands = gate1_bench_uncertainty(trials=24, seed=0, prefer_cantera=False)
+    eta_band = bands["electric_efficiency"]
+    checks.append(Check("Gate 1 bench uncertainty band is well-formed",
+                        eta_band.p05 <= eta_band.p50 <= eta_band.p95,
+                        eta_band.band()))
+    vehicle = gate1_vehicle_fuel_comparison(prefer_cantera=False)
+    checks.append(Check("Gate 1 vehicle fuel path is finite",
+                        vehicle.fuel_l_per_100km_gate1 > 0.0,
+                        f"tables {vehicle.fuel_l_per_100km_tables:.2f} vs "
+                        f"gate1 {vehicle.fuel_l_per_100km_gate1:.2f} L/100km"))
     return checks
 
 
@@ -388,14 +495,88 @@ def _check_degradation() -> list[Check]:
     return checks
 
 
-def run_checks() -> list[Check]:
+def _check_gate4_scaling() -> list[Check]:
     checks: list[Check] = []
-    for group in (_check_rotor, _check_coupling, _check_fuel_economy,
-                  _check_acceptance, _check_durability, _check_robustness,
-                  _check_economics, _check_closed_loop, _check_sizing,
-                  _check_uncertainty, _check_ambient, _check_regulatory,
-                  _check_summary, _check_coldstart, _check_payload,
-                  _check_phev, _check_degradation):
+    ref = evaluate_layout(CylinderLayout(*REFERENCE_LAYOUT))
+    checks.append(Check("Gate 4 reference layout (4/2/2) passes ERS",
+                        ref.all_ers_pass,
+                        f"{ref.ers_passed}/{ref.ers_total}, "
+                        f"{ref.rated_kw:.0f} kW rated"))
+    checks.append(Check("Gate 4 reference highway fuel matches CS headline",
+                        abs(ref.highway_fuel_l_per_100km - 4.46) < 0.05,
+                        f"{ref.highway_fuel_l_per_100km:.2f} L/100km (soc_target fuel)"))
+    summary = run_gate4_sweep(max_total=10, max_per_tier=5)
+    checks.append(Check("Gate 4 layout sweep finds ERS-passing configs",
+                        len(summary.passing) > 0,
+                        f"{len(summary.passing)}/{len(summary.results)} pass"))
+    best = summary.best
+    checks.append(Check("Gate 4 best-ranked layout passes ERS",
+                        best.all_ers_pass,
+                        f"{best.layout.label} ({best.layout.total_cylinders} cyl, "
+                        f"hwy {best.highway_fuel_l_per_100km:.2f} L/100km)"))
+    checks.append(Check("Gate 4 reference is competitive (score within band)",
+                        ref.score >= best.score - 20.0,
+                        f"ref {ref.score:.1f} vs best {best.score:.1f}"))
+    x8_layouts = enumerate_ring_layouts(8)
+    checks.append(Check("X8 ring has 45 tier mixes",
+                        len(x8_layouts) == 45,
+                        f"{len(x8_layouts)} layouts"))
+    story = run_ring_size_study((4, 8), rating_profile="storyboard")
+    x8_pass = sum(1 for r in story.for_ring(8) if r.all_ers_pass)
+    checks.append(Check("X8 storyboard ring has passing mixed layouts",
+                        x8_pass > 0,
+                        f"{x8_pass}/{len(story.for_ring(8))} pass on X8"))
+    x8_best = story.best_per_ring(design_aligned_only=True).get(8)
+    checks.append(Check("X8 storyboard sweet spot is identified",
+                        x8_best is not None and x8_best.layout.n_medium >= 1,
+                        f"best {x8_best.layout.label if x8_best else 'none'} "
+                        f"({x8_best.tier_mix_kind if x8_best else ''})"))
+    checks.append(Check("X8 all-micro homogeneous is not design-aligned",
+                        not is_design_aligned(
+                            CylinderLayout(8, 0, 0), ring_size=8,
+                            rating_profile="storyboard",
+                        ),
+                        "8/0/0 excluded from architecture picks"))
+    sweep = run_gate4_sweep(max_total=10, max_per_tier=5)
+    singles_pass = [
+        r for r in sweep.passing if count_active_tiers(r.layout) == 1
+    ]
+    checks.append(Check("Gate 4 no single-tier layout passes full ERS",
+                        len(singles_pass) == 0,
+                        f"{len(singles_pass)} single-tier passers"))
+    three = sweep.best_with_tier_depth(3, design_aligned_only=True)
+    checks.append(Check("Gate 4 three-tier stack passes full ERS",
+                        three is not None and three.all_ers_pass,
+                        f"{three.layout.label if three else 'none'}"))
+    x12_three = run_ring_size_study((12,), rating_profile="storyboard").best_per_ring(
+        design_aligned_only=True, all_three_tiers_only=True,
+    ).get(12)
+    checks.append(Check("X12 storyboard has all-three-tier design-aligned pick",
+                        x12_three is not None and x12_three.all_ers_pass,
+                        f"{x12_three.layout.label if x12_three else 'none'}"))
+    return checks
+
+
+def run_checks(quick: bool = False) -> list[Check]:
+    all_groups = (
+        _check_rotor, _check_coupling, _check_fuel_economy,
+        _check_acceptance, _check_durability, _check_robustness,
+        _check_economics, _check_closed_loop, _check_sizing,
+        _check_uncertainty, _check_ambient, _check_regulatory,
+        _check_summary, _check_coldstart, _check_payload,
+        _check_phev, _check_degradation, _check_ice_benchmark,
+        _check_graceful_degradation, _check_gate1_bench, _check_gate1_matrix,
+        _check_gate4_scaling,
+    )
+    quick_groups = (
+        _check_rotor, _check_coupling, _check_fuel_economy,
+        _check_acceptance, _check_summary, _check_ice_benchmark,
+        _check_graceful_degradation, _check_gate1_bench, _check_gate1_matrix,
+        _check_gate4_scaling,
+    )
+    groups = quick_groups if quick else all_groups
+    checks: list[Check] = []
+    for group in groups:
         checks.extend(group())
     return checks
 
@@ -411,12 +592,15 @@ def run_unit_tests(verbosity: int = 0) -> tuple[int, int]:
 
 def main(argv: list[str]) -> int:
     quiet = "--quiet" in argv or "-q" in argv
+    quick = "--quick" in argv
     print("=" * 64)
     print("  PROJECT PHOENIX - one-command verification")
+    if quick:
+        print("  (--quick: smoke subset, unit tests skipped)")
     print("=" * 64)
 
     print("\n[1/2] Headline invariants + robustness claims\n")
-    checks = run_checks()
+    checks = run_checks(quick=quick)
     failed = [c for c in checks if not c.ok]
     for c in checks:
         if not quiet or not c.ok:
@@ -424,8 +608,12 @@ def main(argv: list[str]) -> int:
             print(f"  [{mark}] {c.name:<46} {c.detail}")
 
     print("\n[2/2] Unit-test suite\n")
-    tests_run, test_failures = run_unit_tests(verbosity=0)
-    print(f"  Ran {tests_run} tests, {test_failures} failed")
+    if quick:
+        tests_run, test_failures = 0, 0
+        print("  Skipped in --quick mode (run full verify.py for all tests)")
+    else:
+        tests_run, test_failures = run_unit_tests(verbosity=0)
+        print(f"  Ran {tests_run} tests, {test_failures} failed")
 
     total_fail = len(failed) + test_failures
     print("\n" + "=" * 64)

@@ -1,0 +1,172 @@
+PROJECT PHOENIX — EVIDENCE BASELINE (auto-generated)
+Generated: 2026-07-03 02:29 UTC
+
+DISCLAIMER: All figures below are simulation outputs unless marked measured.
+Prefix external claims with 'simulation shows…'. Hardware gates not cleared.
+
+========================================================================
+EXECUTIVE SUMMARY
+========================================================================
+================================================================
+  PROJECT PHOENIX - executive summary (Phase-1, Moves A-M)
+================================================================
+
+  Per-body headlines (same powertrain, six bodies):
+  Body          Fuel   Cost/km  (5-95%)        CO2   Batt    WLTP  Season
+                L/100  EUR/km   EUR/km        g/km   kW/C    L/100   swing
+  ------------------------------------------------------------------------
+  AWD SUV       2.61   0.072  [0.066-0.091]  102.1   90/4.5   6.07  11.6%
+  Sedan         0.64   0.040  [0.033-0.047]   46.8   60/3.0   3.91  22.3%
+  Hatchback     0.55   0.039  [0.031-0.051]   44.2   60/3.0   3.60  22.7%
+  Crossover     1.11   0.048  [0.044-0.063]   59.9   70/3.5   4.87  20.2%
+  Pickup        3.86   0.092  [0.078-0.136]  137.2   60/3.0   7.83  14.8%
+  Van / MPV     2.95   0.077  [0.066-0.094]  111.8   60/3.0   6.59  16.6%
+
+  Moves J-M (cold / payload / plug-in / ageing):
+  Body          Cold%  Payload%  PHEV CO2  Fuel drift  Range loss
+  ------------------------------------------------------------------------
+  AWD SUV       19.3%     19.2%       12 g/km  + 44.4%     - 23.3%
+  Sedan         50.4%     24.3%        8 g/km  +117.1%     - 23.4%
+  Hatchback     52.4%     30.1%        7 g/km  +109.9%     - 23.4%
+  Crossover     34.9%     41.2%       10 g/km  + 99.7%     - 23.3%
+  Pickup         7.1%     11.8%       27 g/km  + 25.6%     - 23.3%
+  Van / MPV      9.3%     16.2%       12 g/km  + 37.6%     - 23.3%
+
+  Fleet-wide headline facts:
+    PCMRITMS rotor      : 242.8 N.m peak (+34.9%), 50.2 kW surge lifts the buffer to 140 kW brief burst
+    Battery longevity   : 0 replacements over vehicle life; embodied CO2 4.7% of lifecycle (SUV)
+    Climate robustness  : thermal derate from -10C to +40C? no; regulatory shortfalls: 0
+    ATPE vs 2.0L turbo  : 27.9% fuel saving (AWD SUV mixed cycle, identical vehicle stack)
+    Fault tolerance     : one cylinder offline -> all bodies pass ERS
+
+  Read: small cool-running pack, low cost & CO2, capable across the
+  full climate, regulatory, cold-start, payload, plug-in, and ageing
+  envelope - every figure is the median of an honest band.
+================================================================
+
+========================================================================
+MOVE N — ATPE vs CONVENTIONAL 2.0L TURBO (identical vehicle stack)
+========================================================================
+=== ATPE vs conventional 2.0L turbo ICE: fuel L/100km (ATPE -> ICE, % saving) ===
+  Body                          Urban                Highway              Tow+grade                  Mixed
+  --------------------------------------------------------------------------------------------------------
+  AWD SUV            0.00->0.00 (-0%)      4.46->7.67 (-42%)     6.91->11.92 (-42%)      2.35->3.26 (-28%)
+  Sedan              0.00->0.00 (-0%)      0.83->1.42 (-42%)      4.64->9.21 (-50%)      0.40->0.64 (-38%)
+  Hatchback          0.00->0.00 (-0%)      0.69->1.19 (-42%)      4.09->8.47 (-52%)      0.34->0.56 (-38%)
+  Crossover          0.00->0.00 (-0%)      1.50->2.43 (-38%)     5.58->10.37 (-46%)      1.01->1.46 (-31%)
+  Pickup             0.00->0.00 (-0%)      6.17->9.68 (-36%)     8.58->13.62 (-37%)      4.23->7.01 (-40%)
+  Van / MPV          0.00->0.00 (-0%)      5.01->8.29 (-40%)     7.39->12.42 (-41%)      2.77->5.12 (-46%)
+  (ATPE fuel always lower than ICE -> negative number means ATPE used MORE fuel)
+
+=== ATPE vs conventional ICE: CO2 g/km (ATPE -> ICE) ===
+  Body                      Urban            Highway          Tow+grade              Mixed
+  ----------------------------------------------------------------------------------------
+  AWD SUV                    0->0           103->177           160->275             54->75
+  Sedan                      0->0             19->33           107->213              9->15
+  Hatchback                  0->0             16->27            94->196              8->13
+  Crossover                  0->0             35->56           129->239             23->34
+  Pickup                     0->0           142->224           198->315            98->162
+  Van / MPV                  0->0           116->192           171->287            64->118
+  Headline (AWD SUV, mixed cycle): ATPE 2.35 L/100km vs conventional ICE 3.26 L/100km -> 27.9% fuel saving, 54 vs 75 g/km CO2
+
+
+=== ATPE vs conventional 2.0L turbo ICE: fuel L/100km (ATPE -> ICE, % saving) ===
+  Body                     WLTP Class
+  -----------------------------------
+  AWD SUV           4.61->7.30 (-37%)
+  Sedan             1.64->2.70 (-39%)
+  Hatchback         1.18->1.92 (-39%)
+  Crossover         3.03->4.91 (-38%)
+  Pickup           6.81->10.75 (-37%)
+  Van / MPV         5.38->8.55 (-37%)
+  (ATPE fuel always lower than ICE -> negative number means ATPE used MORE fuel)
+
+=== ATPE vs conventional ICE: CO2 g/km (ATPE -> ICE) ===
+  Body                 WLTP Class
+  -------------------------------
+  AWD SUV                106->169
+  Sedan                    38->62
+  Hatchback                27->44
+  Crossover               70->113
+  Pickup                 157->248
+  Van / MPV              124->198
+
+========================================================================
+FAULT TOLERANCE (ERS §4.8)
+========================================================================
+=== Graceful degradation: one cylinder offline (ERS §4.8) ===
+  Body          Scenario                         Peak kW  ERS checks
+  --------------------------------------------------------------------
+  AWD SUV      Tier 1 micro cylinder offline       222  9/9 [PASS]
+  AWD SUV      Tier 2 medium cylinder offline      190  9/9 [PASS]
+  AWD SUV      Tier 3 large cylinder offline       170  9/9 [PASS]
+  Sedan        Tier 1 micro cylinder offline       222  9/9 [PASS]
+  Sedan        Tier 2 medium cylinder offline      190  9/9 [PASS]
+  Sedan        Tier 3 large cylinder offline       170  9/9 [PASS]
+  Hatchback    Tier 1 micro cylinder offline       222  9/9 [PASS]
+  Hatchback    Tier 2 medium cylinder offline      190  9/9 [PASS]
+  Hatchback    Tier 3 large cylinder offline       170  9/9 [PASS]
+  Crossover    Tier 1 micro cylinder offline       222  9/9 [PASS]
+  Crossover    Tier 2 medium cylinder offline      190  9/9 [PASS]
+  Crossover    Tier 3 large cylinder offline       170  9/9 [PASS]
+  Pickup       Tier 1 micro cylinder offline       222  9/9 [PASS]
+  Pickup       Tier 2 medium cylinder offline      190  9/9 [PASS]
+  Pickup       Tier 3 large cylinder offline       170  9/9 [PASS]
+  Van / MPV    Tier 1 micro cylinder offline       222  9/9 [PASS]
+  Van / MPV    Tier 2 medium cylinder offline      190  9/9 [PASS]
+  Van / MPV    Tier 3 large cylinder offline       170  9/9 [PASS]
+
+  Fleet fault-tolerant: yes — every body passes all ERS checks with one cylinder offline
+
+========================================================================
+VIRTUAL GATE 1 BENCH (digital prototype — not measured)
+========================================================================
+=== Virtual Gate 1 bench matrix (simulation — not measured) ===
+  Grid: 4 speeds × 4 loads × 3 tiers = 48 cells
+  Overall pass rate: 100% (48/48)
+
+=== Gate 1 virtual bench — Tier 2 (medium) (48/48 cells pass) ===
+  load \ speed | 1800 | 2200 | 2600 | 3000
+  ------------------------------------------
+   25%       |PASSPASSPASSPASS
+   50%       |PASSPASSPASSPASS
+   75%       |PASSPASSPASSPASS
+  100%       |PASSPASSPASSPASS
+
+=== Sweet-spot snapshot (medium tier, 2600 rpm, 75% load) ===
+  Stroke (mm)         : 50.0
+  Peak power (kW)     : 58.1
+  Electric efficiency : 0.496
+  IMEP (bar)          : 4.2
+  Bench checks        : 6/6 pass
+
+=== Sweet-spot uncertainty bands (perturbed inputs) ===
+  0.50 +/- 0.01   90% CI [0.47, 0.51]
+  57.71 +/- 3.04 kW  90% CI [52.78, 62.82]
+  4.22 +/- 0.20 bar  90% CI [3.94, 4.56]
+
+=== Vehicle twin: fixed tier tables vs Gate 1 physics (AWD SUV, highway CS) ===
+  Fixed tables      : 2.17 L/100 km
+  Gate 1 physics    : 1.84 L/100 km
+  Delta             : -0.33 L/100 km (-15.1%)
+
+  DISCLAIMER: virtual bench only — hardware measurement required before
+  commercial claims. Prefix external statements with 'simulation shows…'.
+
+========================================================================
+GATE 1 CSV (spreadsheet)
+========================================================================
+  Regenerate:
+    .venv\Scripts\python.exe scripts\export_gate1_matrix.py
+  File:
+    docs/evidence-pack/GATE1-VIRTUAL-BENCH-MATRIX.csv
+
+========================================================================
+INTEGRITY CHECK
+========================================================================
+  Run full verification:
+    .venv\Scripts\python.exe verify.py
+  Quick smoke (~10 s):
+    .venv\Scripts\python.exe verify.py --quick
+
+  See docs/DEVELOPMENT-PLAYBOOK.md for pitch, IP, and Gate 1 rig planning.

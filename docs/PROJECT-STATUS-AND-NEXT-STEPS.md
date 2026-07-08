@@ -2,8 +2,8 @@
 
 *A plain-English status report for anyone who wants the full picture without reading code or engineering jargon.*
 
-**Last updated:** June 2025  
-**How we know nothing is broken:** run `.venv\Scripts\python.exe verify.py` — today it reports **PASS (38 checks + 93 tests)**.
+**Last updated:** July 2026  
+**How we know nothing is broken:** run `.venv\Scripts\python.exe verify.py` — reports **PASS (58 checks + 135 tests)**; use `verify.py --quick` for a ~10 s smoke subset.
 
 ---
 
@@ -63,10 +63,10 @@ These are the real-world milestones from the engineering requirements document:
 
 | Gate | What it means | Status |
 |------|---------------|--------|
-| **1** | Single-cylinder computer model | **Partially** — vehicle-level twin exists; detailed single-cylinder combustion is still simplified |
-| **2** | Stable free-piston operation (physics of the piston) | **Not started in hardware** — abstracted in software |
+| **1** | Single-cylinder computer model | **Partially (software)** — virtual 48-cell bench matrix passes in simulation; combustion surrogate + opt-in physics path; **hardware not measured** |
+| **2** | Stable free-piston operation (physics of the piston) | **Started in software** — RPM-linked cycle timing; bearing-runout surrogate; **hardware not started** |
 | **3** | Linear generator integrated | **Not started in hardware** — efficiency numbers are assumed, not measured |
-| **4** | Multiple cylinders working together | **Not started in hardware** |
+| **4** | Multiple cylinders working together | **Started in software** — virtual layout sweep + X12 ring scaling; **hardware not started** |
 | **5** | Whole vehicle integration | **Done in software** — six bodies, drive cycles, pass/fail targets |
 | **6** | AI optimisation | **Started in software** — learning study exists; not production-ready AI |
 | **7** | Mechanical CAD and physical parts | **Not started** — diagrams exist; no 3D manufacturing models yet |
@@ -97,7 +97,9 @@ This is separate from the simulation Moves:
 4. **Every software Move A–M** has code, tests, a section in `main.py`, and checks in `verify.py`.
 5. **A one-command proof** (`verify.py`) re-derives headline numbers from live code so silent drift is caught.
 6. **A web dashboard** (`python -m dashboard`) lets you pick a vehicle and drive cycle and watch the simulation play back.
-7. **An executive summary table** at the start of `main.py` rolls up the most important numbers from Moves A–I in one view.
+7. **An executive summary table** at the start of `main.py` rolls up Moves A–M plus ICE benchmark and fault tolerance.
+8. **A virtual Gate 1 bench matrix** — 48 operating points (speed × load × tier), CSV export, uncertainty bands, and vehicle fuel traced to per-cartridge physics (`digital_twin/gate1_matrix.py`).
+9. **A virtual Gate 4 layout search** — every tier mix at **X4, X6, X8, X10, X12, X14, X16** under phase1 and storyboard kW profiles (`digital_twin/gate4_scaling.py`).
 
 ### What the simulation has proven (in plain language)
 
@@ -114,12 +116,10 @@ This is separate from the simulation Moves:
 | Gap | Why it matters |
 |-----|----------------|
 | **No physical prototypes** | All efficiency, noise, vibration, packaging, and safety numbers are **modelled**, not measured. |
-| **Combustion is simplified** | The engine is treated as tiers with fixed efficiency — not real flame, valves, or piston motion. |
-| **No comparison car** | We have not yet simulated a conventional 2.0 L turbo on the **same** routes for a head-to-head. |
-| **No “one cylinder failed” mode** | Reliability targets say the engine should keep running if one cylinder is off — not modelled yet. |
+| **Combustion is simplified** | Virtual bench passes in simulation; real flame, valves, and measured piston motion still need lab data to calibrate surrogates. |
 | **AI controller is a study, not a product** | A learning experiment exists; it is not the same as a certified vehicle brain. |
-| **Executive summary stops at Move I** | Moves J–M (cold start, payload, plug-in, ageing) run in the full demo but are **not** in the one-page summary table yet. |
 | **Regulatory cycles are reconstructions** | They match published distance and speed envelopes; they are **not** the copyrighted official second-by-second traces. |
+| **20-scene visual pipeline not built** | Storyboard exists; reproducible scene generation deferred until bench data or funding demo need. |
 
 **Disclaimer (already in project docs):** content includes **unverified engineering projections**. Hardware validation is required before any commercial decision.
 
@@ -130,11 +130,15 @@ This is separate from the simulation Moves:
 | Folder / file | What a non-engineer should know |
 |---------------|----------------------------------|
 | `digital_twin/` | The physics engine — vehicle, engine, battery, flywheel, controller |
+| `digital_twin/gate1_matrix.py` | Virtual single-cartridge bench — 48-cell test matrix, CSV export, investor report |
+| `digital_twin/gate4_scaling.py` | Virtual multi-cylinder layout search — best cartridge mix, X12 ring sweep, CSV |
+| `scripts/export_gate4_scaling.py` | Regenerate `docs/evidence-pack/GATE4-VIRTUAL-SCALING.csv` |
+| `scripts/export_evidence_pack.py` | One-command pitch/grant evidence baseline (text + CSV) |
 | `ml_study/` | Experiment where the controller **learns** from simulation data |
 | `main.py` | Long demonstration that prints every study’s results |
 | `verify.py` | Green-light button: “are all headline numbers still correct?” |
 | `dashboard/` | Web page to run one simulation and see charts |
-| `tests/` | 93 automated tests that must pass |
+| `tests/` | 130 automated tests that must pass |
 | `docs/` | Concept papers, requirements, and plain-English guides |
 
 ---
@@ -143,13 +147,16 @@ This is separate from the simulation Moves:
 
 These are **model outputs**, not road-test certificates.
 
-**AWD SUV (main reference vehicle), charge-sustaining highway fuel:** about **4.6 L/100 km**  
+**AWD SUV (main reference vehicle), charge-sustaining highway fuel:** about **4.46 L/100 km**  
+**Mixed cycle vs conventional 2.0 L turbo (same car):** about **2.35 vs 3.26 L/100 km** (~**28%** less fuel)  
 **Urban driving:** effectively **electric** (near-zero fuel) when the battery is charged  
 **Battery replacements over 250,000 km:** **zero** in the model  
 **Right-sized battery discharge power (SUV):** about **90 kW** vs **120 kW** default — room to downsize  
-**Winter-to-summer fuel swing:** roughly **14–23%** depending on body style  
-**Lifetime CO₂ (SUV, all-in):** about **105 g/km** in the model  
+**Winter-to-summer fuel swing:** roughly **12–23%** depending on body style (SUV ~12%)  
+**Lifetime CO₂ (SUV, all-in):** about **102 g/km** in the model  
 **After 250,000 km of ageing:** electric range fades about **23%**; fuel use creeps up modestly in absolute terms
+
+**July 2026 model note:** ATPE now uses energy-weighted tier fill when multiple cylinder sizes fire together (see `digital_twin/atpe.py`). Headline fuel figures improved ~3–4% vs the prior governing-tier shortcut.
 
 Every one of these sits inside an **uncertainty band** (Move G) — the single numbers are the **middle** of a range, not a best-case cherry-pick.
 
@@ -163,26 +170,28 @@ Think of this as three tracks: **polish the software**, **deepen the model where
 
 | Task | Why |
 |------|-----|
-| Add Moves **J–M** to the executive summary table | So the one-page front door tells the **whole** story |
-| Add a **`--quick` smoke mode** to `verify.py` | Full verification takes ~45 seconds; CI could use a faster subset |
+| Add a **`--quick` smoke mode** to `verify.py` | Full verification takes ~45 seconds; CI can use `--quick` (~10 s) |
 | Document for stakeholders | This document + existing [PLAIN-ENGLISH-OVERVIEW.md](PLAIN-ENGLISH-OVERVIEW.md) |
 
 *Most of this is communication and convenience, not new science.*
 
 ### Track B — Next simulation depth (months, still laptop-scale)
 
-These are the **agreed backlog** items from the engineering requirements:
+Several Track B items are **done** for the no-lab-funding path; the remainder stays on the backlog:
 
-| Task | Plain benefit |
-|------|----------------|
-| **Benchmark vs a normal car** | Answer “how much better than a 2.0 L turbo?” on identical trips |
-| **Driver intent** | Understand *how* the driver presses the pedal, not just *how much* |
-| **Graceful degradation** | Model “one cylinder out” and show the car still works, slower |
-| **Variable compression / stroke per tier** | Trade efficiency vs power inside the engine model |
-| **Richer engine physics (Gates 1–2)** | Piston motion, combustion maps — parameters fed from specialist tools, not a separate model |
-| **Tighter learned-AI loop** | Ensure the learned controller’s decisions match what the hardware actually does |
+| Task | Status | Plain benefit |
+|------|--------|----------------|
+| **Virtual Gate 1 bench matrix** | **Done** | 48-cell speed/load/tier sweep, pass/fail bands, CSV for spreadsheets |
+| **Virtual Gate 4 layout search** | **Done** | X4–X16 tier mixes × 2 kW profiles; CSV with `tier_mix_kind` column |
+| **Wire bench physics to vehicle twin** | **Done (opt-in)** | `build_gate1_twin()` traces fuel to per-cartridge combustion |
+| **Gate 1 uncertainty bands** | **Done** | Sweet-spot Monte Carlo on efficiency, power, IMEP |
+| **Evidence pack export** | **Done** | `export_evidence_pack.py` + `GATE1-VIRTUAL-BENCH-MATRIX.csv` |
+| **Driver intent** | Backlog | Understand *how* the driver presses the pedal, not just *how much* |
+| **Variable compression / stroke per tier** | Backlog | Trade efficiency vs power inside the engine model |
+| **Calibrate surrogates from measured rig data** | Backlog | Feed lab CSV into `gate1_bench_at_load()` when hardware exists |
+| **Tighter learned-AI loop** | Backlog | Ensure the learned controller’s decisions match what the hardware actually does |
 
-*These make the twin harder to fool and closer to hardware — but still simulation.*
+*Default validated fuel figures still use tier-efficiency tables; Gate 1 physics is opt-in so headline numbers do not drift.*
 
 ### Track C — Hardware and business (the real milestone path)
 
@@ -210,8 +219,8 @@ If you are deciding what to do Monday morning:
 2. **Treat the executive summary (Moves A–I) as the elevator pitch** — it is the validated core story.
 3. **Use Moves J–M when someone asks “yes, but what about winter / luggage / plugging in / old age?”** — those answers exist; they are just later in `main.py`.
 4. **Do not claim road-test or certification results** — say “simulation shows…” and point to `verify.py`.
-5. **For funding:** align the narrative to **bench prototype data** (Seed phase deliverable) as the next proof point.
-6. **For engineering:** pick **one** backlog item with the highest decision value — likely **conventional-car benchmark** or **Gate 1–2 piston physics** — rather than spreading effort.
+5. **For funding:** use the **virtual bench dossier** (`export_evidence_pack.py`, CSV matrix) plus the narrative that **measured** bench data is the Seed-phase deliverable.
+6. **For engineering:** when hardware exists, **calibrate** surrogates from rig CSV; until then the virtual matrix defines acceptance tests before metal is cut.
 
 ---
 
@@ -220,12 +229,21 @@ If you are deciding what to do Monday morning:
 No special tools beyond Python:
 
 ```powershell
-# Full integrity check (38 headline checks + 93 tests)
+# Full integrity check (55 headline checks + 130 tests)
 .venv\Scripts\python.exe verify.py
 
 # Full story walkthrough (long; use --quick for a faster run)
 .venv\Scripts\python.exe main.py
 .venv\Scripts\python.exe main.py --quick
+
+# Virtual Gate 1 bench matrix (CSV)
+.venv\Scripts\python.exe scripts\export_gate1_matrix.py
+
+# Virtual Gate 4 layout sweep (CSV)
+.venv\Scripts\python.exe scripts\export_gate4_scaling.py
+
+# Investor / grant evidence pack (text + CSV)
+.venv\Scripts\python.exe scripts\export_evidence_pack.py
 
 # Interactive dashboard in a browser
 .venv\Scripts\python.exe -m dashboard
@@ -237,7 +255,7 @@ If `verify.py` prints **RESULT: PASS**, the locked headline numbers and tests ag
 
 ## 9. One-paragraph summary for a non-technical audience
 
-> Project Phoenix has built a honest computer model of a new hybrid powertrain and stress-tested it across six vehicle types, four seasons of temperature, official-style drive tests, full loads, cold starts, grid charging, and vehicle ageing. **All thirteen planned simulation studies (Moves A–M) are complete and automatically tested.** The model supports the core story: a small, long-lasting battery plus a flywheel sprint reserve plus an efficient generator can deliver strong performance with low lifetime cost and carbon — if the hardware matches the assumptions. **What has not been done is building and measuring real parts.** The next step is laboratory prototypes whose measured results can confirm or correct the model, then a mule vehicle. Until then, treat every number as a well-disciplined engineering projection, not a road-test fact.
+> Project Phoenix has built a honest computer model of a new hybrid powertrain and stress-tested it across six vehicle types, four seasons of temperature, official-style drive tests, full loads, cold starts, grid charging, and vehicle ageing. **All thirteen planned simulation studies (Moves A–M) are complete and automatically tested.** A **virtual Gate 1 bench matrix** (48 cartridge operating points, CSV export, uncertainty bands) provides digital bench evidence before lab funding. The model supports the core story: a small, long-lasting battery plus a flywheel sprint reserve plus an efficient generator can deliver strong performance with low lifetime cost and carbon — if the hardware matches the assumptions. **What has not been done is building and measuring real parts.** The next step is laboratory prototypes whose measured results can confirm or correct the model, then a mule vehicle. Until then, treat every number as a well-disciplined engineering projection, not a road-test fact.
 
 ---
 
@@ -250,6 +268,9 @@ If `verify.py` prints **RESULT: PASS**, the locked headline numbers and tests ag
 | [09-atpe-ers-and-insights.md](09-atpe-ers-and-insights.md) | Technical requirements, gates, and Move write-ups |
 | [05-investor-pitch-and-advantages.md](05-investor-pitch-and-advantages.md) | Funding phases and market framing |
 | [08-digital-twin-design.md](08-digital-twin-design.md) | How the twin is structured (more technical) |
+| [13-atpe-whitepaper.md](13-atpe-whitepaper.md) | ATPE concept whitepaper (publication-ready, simulation-qualified) |
+| [14-phoenix-integrated-whitepaper.md](14-phoenix-integrated-whitepaper.md) | Integrated powertrain whitepaper + twin evidence |
+| [15-patent-portfolio.md](15-patent-portfolio.md) | Patent family map and filing recommendations |
 
 ---
 

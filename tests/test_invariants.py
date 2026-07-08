@@ -132,7 +132,7 @@ class FleetRegressionTest(unittest.TestCase):
 
     def test_suv_highway_fuel_economy(self) -> None:
         suv = self._cell(self.baseline, "AWD SUV", "Highway")
-        self.assertAlmostEqual(suv.fuel_l_per_100km, 4.62, delta=0.05)
+        self.assertAlmostEqual(suv.fuel_l_per_100km, 4.46, delta=0.05)
 
     def test_urban_is_electric(self) -> None:
         for (body, cycle), c in self.baseline.items():
@@ -167,7 +167,7 @@ class GenerationSlewTest(unittest.TestCase):
                  for c in run_fleet(charge_sustaining_bodies())}
         suv = next(c for (b, cy), c in cells.items()
                    if b == "AWD SUV" and "Highway" in cy)
-        self.assertAlmostEqual(suv.fuel_l_per_100km, 4.62, delta=0.05)
+        self.assertAlmostEqual(suv.fuel_l_per_100km, 4.46, delta=0.05)
 
     def test_slew_limits_ramp_rate(self) -> None:
         """With a slew cap the ATPE cannot jump from idle to full in one step."""
@@ -707,6 +707,10 @@ class ExecutiveSummaryTest(unittest.TestCase):
             self.assertLessEqual(b.cost_p05, b.cost_per_km)
             self.assertLessEqual(b.cost_per_km, b.cost_p95)
             self.assertGreater(b.battery_power_kw, 0.0)
+            self.assertGreater(b.cold_penalty_pct, 0.0)
+            self.assertGreater(b.payload_penalty_pct, 0.0)
+            self.assertGreater(b.fuel_drift_pct, 0.0)
+            self.assertGreater(b.range_loss_pct, 0.0)
 
     def test_summary_matches_the_headline_invariants(self) -> None:
         from digital_twin import build_executive_summary
@@ -718,11 +722,14 @@ class ExecutiveSummaryTest(unittest.TestCase):
         self.assertLess(s.embodied_co2_share_pct, 15.0)
         self.assertFalse(s.derates_in_climate)
         self.assertEqual(s.regulatory_shortfalls, 0)
+        self.assertTrue(s.graceful_degraded_pass)
+        self.assertGreater(s.ice_mixed_saving_pct, 0.0)
         # SUV recommended power matches Move F (90 kW); report renders.
         suv = s.bodies[0]
         self.assertEqual(suv.body, "AWD SUV")
         self.assertAlmostEqual(suv.battery_power_kw, 90.0, delta=0.1)
-        self.assertIn("executive summary", s.report())
+        self.assertIn("Moves A-M", s.report())
+        self.assertIn("Moves J-M", s.report())
 
 
 class ColdStartTest(unittest.TestCase):
@@ -853,6 +860,43 @@ class DegradationTest(unittest.TestCase):
         from digital_twin import fleet_degradation
         for c in fleet_degradation():
             self.assertGreater(c.range_loss_pct, 0.0)
+
+
+class IceBenchmarkTest(unittest.TestCase):
+    """Move N: ATPE must beat a conventional 2.0 L turbo on identical cycles."""
+
+    def test_atpe_beats_ice_on_mixed_cycle(self) -> None:
+        from digital_twin import (
+            DriveCycles, charge_sustaining_bodies, run_fleet, run_ice_fleet,
+        )
+        mixed = DriveCycles.mixed()
+        atpe = next(c for c in run_fleet(charge_sustaining_bodies(), [mixed])
+                    if c.body == "AWD SUV")
+        ice = next(c for c in run_ice_fleet(cycles=[mixed])
+                   if c.body == "AWD SUV")
+        self.assertLess(atpe.fuel_l_per_100km, ice.fuel_l_per_100km)
+
+    def test_benchmark_summary_renders(self) -> None:
+        from digital_twin import benchmark_summary
+        report = benchmark_summary()
+        self.assertIn("ATPE vs conventional", report)
+        self.assertIn("Headline", report)
+
+
+class GracefulDegradationTest(unittest.TestCase):
+    """ERS §4.8: one cylinder offline must not break capability targets."""
+
+    def test_all_bodies_pass_with_one_cylinder_offline(self) -> None:
+        from digital_twin import fleet_graceful_degradation
+        for r in fleet_graceful_degradation():
+            self.assertTrue(r.all_passed, f"{r.body} {r.scenario} failed")
+
+    def test_degraded_stack_reduces_peak_power(self) -> None:
+        from digital_twin import evaluate_degraded_body, PHASE1_BODIES
+        from digital_twin import phase1_config_for
+        nominal = phase1_config_for(PHASE1_BODIES[0]).atpe.max_electric_w
+        r = evaluate_degraded_body(PHASE1_BODIES[0])
+        self.assertLess(r.peak_power_kw * 1000, nominal)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 # Project Phoenix — Plain-English Overview
 
-*A no-jargon tour of what this project is, what we built, and what we proved.*
+*A no-jargon tour of what this project is, what we built, what we proved, and where we stand today.*
+
+**Last updated:** July 2026
 
 ---
 
@@ -39,16 +41,23 @@ so we can see how the same technology behaves on a light car versus a heavy truc
 ## 3. How we work: every change is a measured "Move"
 
 Rather than rebuilding everything at once, we add one realism layer at a time. We call each
-one a **"Move"** (A, B, C, D, E, F, G, H, I, J, K, L, M). Every Move follows the same discipline:
+one a **"Move"** (A through M, plus a comparison study N). Every Move follows the same discipline:
 
 1. Build the new capability.
 2. Make it **opt-in** — it can never quietly worsen numbers we already trust.
 3. Prove it with data (an A/B comparison across all six bodies).
 4. Lock the result with automated tests so it can never silently break later.
 
+**Phase 1 simulation is complete:** Moves A through M are all built, tested, and demonstrated.
+Move N adds a head-to-head comparison against a conventional engine (see below).
+
 There is also a single command — **`verify.py`** — that re-checks every headline number and
-runs the whole test suite. Today it confirms **38 checks + 93 tests all pass**. That's our
-"nothing is broken" green light.
+runs the whole test suite. Today it confirms **55 checks + 130 tests all pass**. That's our
+"nothing is broken" green light. For a faster check (~10 seconds), use **`verify.py --quick`**.
+
+A **one-page executive summary** at the start of `main.py` rolls up the most important numbers
+from every Move (including cold weather, full loads, plugging in, ageing, the ICE comparison,
+and fault tolerance).
 
 ---
 
@@ -97,12 +106,12 @@ carbon baked into making the battery).
 
 | Body | Running cost / km | Lifetime CO₂ (all-in) |
 |------|------------------:|----------------------:|
-| Hatchback | $0.039 | 45 g/km |
-| Sedan | $0.041 | 48 g/km |
-| Crossover | $0.048 | 61 g/km |
-| AWD SUV | $0.073 | 105 g/km |
-| Van / MPV | $0.079 | 115 g/km |
-| Pickup | $0.094 | 142 g/km |
+| Hatchback | $0.039 | 44 g/km |
+| Sedan | $0.040 | 47 g/km |
+| Crossover | $0.048 | 60 g/km |
+| AWD SUV | $0.072 | 102 g/km |
+| Van / MPV | $0.077 | 112 g/km |
+| Pickup | $0.092 | 137 g/km |
 
 ### Move E — Try to spend the flywheel's "sprint" more cleverly
 The spinning buffer can deliver a big 140 kW burst. We built a smarter controller to spend
@@ -151,14 +160,14 @@ watched how much each headline number moved. That turns each single figure into 
   ±10%. But the heavy **Pickup**'s cost range leans toward the expensive side — the same bad
   luck that makes a heavy vehicle heavier hurts it more than it helps the light ones.
 - **Plain takeaway:** none of the earlier conclusions changed — Move G just staples an honest
-  **error bar** onto each one, so we can say "about 4.6, give or take 10%" instead of pretending
+  **error bar** onto each one, so we can say "about 4.5, give or take 10%" instead of pretending
   we know it to three decimals.
 
 | Number (AWD SUV) | Single figure | Honest range (90%) |
 |------|---------------:|-------------------:|
-| Highway fuel (L/100km) | 4.62 | 4.24 – 5.09 |
-| Cost (€/km) | 0.074 | 0.058 – 0.091 |
-| Lifetime CO₂ (g/km) | 105 | 94 – 120 |
+| Highway fuel (L/100km) | 4.46 | 4.08 – 4.93 |
+| Cost (€/km) | 0.072 | 0.057 – 0.089 |
+| Lifetime CO₂ (g/km) | 102 | 91 – 117 |
 
 ### Move H — "What about winter and summer?" (ambient temperature)
 Every number so far assumed a mild day. Real cars drive at -10 °C and at +40 °C, so we tested
@@ -222,11 +231,41 @@ Every figure so far was for a brand-new car. We aged the battery and drivetrain 
 - **Fuel use creeps up** — noticeable in percent only on the lightest cars, small in real litres.
 - A brand-new car reproduces the validated numbers exactly, so nothing earlier is affected.
 
+### Move N — "Compared to what?" (conventional 2.0 L turbo)
+Every efficiency claim needs a fair opponent. We swapped the novel generator for a
+**representative conventional 2.0 litre turbo petrol engine** — but kept the **same car, same
+battery, same flywheel, same brain, same roads**. The only thing that changes is how fuel
+turns into electricity.
+
+- **Result (AWD SUV, mixed driving):** the novel design uses about **2.35 L/100 km** vs the
+  conventional engine's **3.26 L/100 km** — roughly **28% less fuel** on the identical trip.
+- **Plain takeaway:** the architecture's advantage is not "hybrid vs non-hybrid" in the abstract;
+  it is **this specific generator strategy vs a normal engine**, measured honestly in the same
+  simulation harness. These are still **model numbers**, not road-test certificates.
+
+**July 2026 model note — weighted tier fuel accounting:** when several cylinder tiers fire together,
+the twin now splits electrical output across active tiers (smallest first) and sums fuel per tier,
+instead of applying the largest tier's efficiency to all output. That removes an unphysical efficiency
+cliff above 110 kW and slightly improves highway/tow fuel figures (~3–4% on the SUV). Peak Tier 1
+BTE is still ~46%; the full 8-cylinder stack at rated power is ~41% BTE energy-weighted.
+
+### Reliability — "What if one cylinder fails?"
+The engineering spec says the engine should keep working if a single combustion module goes
+offline. We modelled that: remove one cylinder from each tier in turn and re-run every
+performance check.
+
+- **Result:** all six vehicle types still pass **every** target (acceleration, top speed, hill
+  climbing, efficiency) in all 18 fault scenarios tested.
+- **Plain takeaway:** the design has **headroom** for graceful degradation in simulation. Real
+  hardware still has to prove the same thing on a test rig.
+
 ---
 
 ## 5. The big-picture conclusions
 
 - **The architecture is sound and honest.** Every claim is reproducible from the model.
+- **It beats a conventional engine in a fair fight** — about **28% less fuel** than a 2.0 L
+  turbo on the same SUV and the same route (Move N). Always say "simulation shows…"
 - **The battery is the quiet hero:** small, cool-running, essentially lifetime-lasting, with
   a tiny carbon footprint — and it never needs replacing.
 - **Capability comes from energy and battery power, not flashy peak power.** Three separate
@@ -238,6 +277,8 @@ Every figure so far was for a brand-new car. We aged the battery and drivetrain 
   grid is clean.
 - **It ages gracefully** — about 23% electric-range loss over 250,000 km, with fuel creeping up
   only modestly in real terms.
+- **One cylinder can fail and the car still passes** — in simulation, every body clears all
+  performance targets with a single module offline (fault-tolerance study).
 - **The default battery power is over-specced** — right-sizing it saves cost and weight while
   keeping the small, low-carbon pack.
 - **Cost and CO₂ are competitive** across everything from a hatchback to a pickup.
@@ -248,7 +289,82 @@ Every figure so far was for a brand-new car. We aged the battery and drivetrain 
 
 ---
 
-## 6. How someone could check our work
+## 6. Where we stand today
+
+Think of progress in two parallel tracks: **what the computer can do** (simulation) and **what
+has been built in a lab** (hardware).
+
+### Simulation — largely done for Phase 1
+
+| Area | Status in plain English |
+|------|-------------------------|
+| **Moves A–M** | **Complete** — every planned realism layer is built, tested, and in the demo |
+| **Move N (vs normal engine)** | **Complete** — fair head-to-head comparison on identical routes |
+| **Six vehicle types** | **All pass** their performance targets in the model |
+| **Executive summary** | **One table** at the start of `main.py` covers fuel, cost, CO₂, seasons, cold start, payload, plug-in, ageing, ICE saving, and fault tolerance |
+| **Interactive dashboard** | Run `python -m dashboard` to pick a vehicle and watch a drive cycle play back |
+| **Integrity check** | `verify.py` → **PASS (55 checks + 130 tests)** |
+| **Virtual Gate 1 bench** | **48-cell matrix** in simulation + CSV (`scripts/export_gate1_matrix.py`) — not lab measured |
+| **Virtual Gate 4 scaling** | **X4–X16 tier-mix study** + CSV — every micro/medium/large split per ring size |
+
+**Bottom line:** the laptop phase of the project is **finished enough to support funding and
+engineering conversations**. We are not looking for more simulation "Moves" before building
+real parts.
+
+### Hardware — not started yet
+
+Engineering progress is also measured in **seven "Gates"** — milestones from single-cylinder
+physics through to a full vehicle on the road. In **software** we are strongest at **Gate 5**
+(whole vehicle works in the model). In the **real world**, **no gate has been cleared yet** —
+there is no lab rig, no measured efficiency, no test car.
+
+| Gate | What it means (simply) | Computer | Real world |
+|:----:|------------------------|----------|------------|
+| **1** | Understand one combustion cylinder | Virtual 48-cell bench + opt-in physics | **Not built** |
+| **2** | Piston moves stably without crashing | RPM-linked timing + stability surrogate | **Not built** |
+| **3** | Piston motion turns into electricity efficiently | Assumed numbers | **Not measured** |
+| **4** | Many cylinders work together | Virtual layout sweep + X12 ring model | **Not built** |
+| **5** | Whole car on real roads / dyno | **Done in simulation** | **Not built** |
+| **6** | Smarter AI control | Early study only | **Not product-ready** |
+| **7** | Manufacturable mechanical design | Concept images & storyboard | **No production CAD** |
+
+The **20-panel PHOENIX-X12 storyboard** in the `designs/` folder is the visual "what we want
+to build." A few short animations exist; a full marketing video pipeline is **deferred** until
+bench data exists or a pitch specifically needs visuals.
+
+### What this means for a non-engineer
+
+- **Trust the simulation for direction, not for certification.** Numbers like 4.6 L/100 km or
+  28% fuel saving are **well-disciplined projections**, not EPA or WLTP road-test results.
+- **The next credibility step is metal, not more code.** The Seed-phase plan is a **single
+  engine cylinder on a lab bench**, then a flywheel bench test, then eventually a test vehicle.
+- **Always prefix claims with "simulation shows…"** and point sceptics to `verify.py`.
+
+For a fuller status report (still plain English), see
+[PROJECT-STATUS-AND-NEXT-STEPS.md](PROJECT-STATUS-AND-NEXT-STEPS.md). For the detailed gate
+scorecard (updated when bench data lands), see the [Gate scorecard](09-atpe-ers-and-insights.md#gate-scorecard)
+in the technical ERS document.
+
+### What comes next (recommended order)
+
+1. **Package the evidence** — run `verify.py`, then `scripts/export_evidence_pack.py` (text + Gate 1 CSV matrix).
+2. **Use the virtual bench for pre-funding** — 48 simulated cartridge tests in `GATE1-VIRTUAL-BENCH-MATRIX.csv`; say “simulation shows…” not “lab proved.”
+3. **Build Gate 1 hardware** — one free-piston cartridge on a lab rig; measure stroke, pressure, power.
+4. **Compare rig to model** — update the simulation when measurements disagree.
+5. **Optional:** a short hero video from the Blender concept if a meeting needs visuals before bench data.
+
+For the full parallel plan (twin Phase 2 + pitch + patents + Gate 1 rig + 90-day checklist), see
+[DEVELOPMENT-PLAYBOOK.md](DEVELOPMENT-PLAYBOOK.md). Regenerate pitch numbers with:
+
+```powershell
+.venv\Scripts\python.exe scripts\export_evidence_pack.py
+.venv\Scripts\python.exe scripts\export_gate1_matrix.py
+.venv\Scripts\python.exe scripts\export_gate4_scaling.py
+```
+
+---
+
+## 7. How someone could check our work
 
 Anyone with the project can run **one command** and watch every headline number re-derive
 itself from the live code and pass:
@@ -257,10 +373,17 @@ itself from the live code and pass:
 .venv\Scripts\python.exe verify.py
 ```
 
-Today that prints **`RESULT: PASS (38 checks + 93 tests)`**. There's also a full demo
-(`python main.py`) that walks through every result described above.
+Today that prints **`RESULT: PASS (55 checks + 130 tests)`**. For a quick smoke check:
+
+```
+.venv\Scripts\python.exe verify.py --quick
+```
+
+There's also a full demo (`python main.py`) that walks through every result described above,
+and a shorter demo (`python main.py --quick`) that skips the slowest blocks.
 
 ---
 
 *This document is a plain-language companion to the detailed technical write-up in
-[docs/09-atpe-ers-and-insights.md](09-atpe-ers-and-insights.md).*
+[09-atpe-ers-and-insights.md](09-atpe-ers-and-insights.md) and the living status report in
+[PROJECT-STATUS-AND-NEXT-STEPS.md](PROJECT-STATUS-AND-NEXT-STEPS.md).*

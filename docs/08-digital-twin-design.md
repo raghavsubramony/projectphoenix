@@ -34,6 +34,9 @@ digital_twin/
 ├── drive_cycles.py    Synthetic urban / highway / towing / mixed cycles
 ├── acceptance.py      ERS pass/fail checks + multi-body capability comparison
 ├── fleet.py           Fleet harness: every body × every cycle, A/B delta tables
+├── single_cylinder.py Gate 1 combustion + free-piston surrogates; bench acceptance
+├── gate1_matrix.py    Virtual 48-cell bench matrix, CSV export, vehicle A/B
+├── gate4_scaling.py   Virtual multi-cylinder layout search + X12 ring sweep
 └── simulation.py      Runner + metrics aggregation + report
 ```
 
@@ -73,14 +76,27 @@ $F = m a + m g \sin\theta + C_{rr} m g \cos\theta + \tfrac12 \rho C_d A v^2$, wh
 $P_{wheel} = F v$. Converted to DC-bus electrical demand via driveline + motor efficiency when
 motoring, and via regen efficiency when braking.
 
-**ATPE (atpe.py).** Tier set chosen to cover $P_{gen}^*$; fuel power $= P_{gen}/\eta_{th}$ of the
-governing tier; fuel mass from gasoline LHV (43.4 MJ/kg, 0.745 kg/L); CO₂ at 2.31 kg/L.
+**ATPE (atpe.py).** The smallest tier set that covers $P_{gen}^*$ is activated; electrical output is
+**filled from Tier 1 upward**, and fuel power is the sum of each tier's share divided by that tier's
+fuel→electrical efficiency (energy-weighted blend). `active_tier` / `active_index` still report the
+governing (largest active) tier for controller telemetry. Gate 1 mode applies per-tier load fractions.
+Fuel mass from gasoline LHV (43.4 MJ/kg, 0.745 kg/L); CO₂ at 2.31 kg/L.
 
 **Buffer (pcmritms.py).** Bounded reservoir; charge applies $\sqrt{\eta_{rt}}$, discharge divides
 by $\sqrt{\eta_{rt}}$; power and energy both clamped.
 
 **Battery (battery.py).** SoC integrates net energy / capacity; discharge/charge power clamped;
 SoC bounded [0, 1].
+
+**Gate 1 virtual bench (`single_cylinder.py`, `gate1_matrix.py`).** Optional per-cartridge
+combustion and free-piston surrogates feed `gate1_bench_at_load()` and the **48-cell** speed × load
+× tier matrix (`run_gate1_matrix()`). Bench peak power uses a load-bank rating surrogate (tier
+nameplate × load × efficiency); vehicle fuel on the default path still uses fixed tier-efficiency
+tables unless `build_gate1_twin()` / `with_gate1()` is enabled. Export CSV:
+
+```powershell
+.venv\Scripts\python.exe scripts\export_gate1_matrix.py
+```
 
 ## Metrics Produced
 
