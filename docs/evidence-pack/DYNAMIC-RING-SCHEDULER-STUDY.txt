@@ -1,0 +1,21 @@
+DYNAMIC RING SCHEDULER STUDY
+Layout: 4/6/2
+Production freeze: Gate-5 (medium-heavy load + NVH + medium capture phases)
+
+Static all-on: 308.9 kW  eta 54.0%  peak 574 N
+
+1       25.0  idle             2       43.1  55.1%      209
+2       25.0  idle             2       43.1  55.1%      209
+3       90.0  city             4       90.0  55.1%      209
+4       90.0  city             4       90.0  55.1%      209
+5      150.0  highway          6      147.9  54.3%      700
+6      150.0  highway          6      147.9  54.3%      700
+7      250.0  overtake        10      244.0  53.7%      467
+8      310.0  track           12      305.6  54.0%      574
+9      310.0  track           12      305.6  54.0%      574
+10       80.0  city             4       86.2  55.1%      209
+11       40.0  idle             2       43.1  55.1%      209
+12        0.0  off              0        0.0   0.0%        0
+
+Profile mean eta: 50.0%
+Fault probe: slot 5 isolated -> 9 active, 250.0 kW

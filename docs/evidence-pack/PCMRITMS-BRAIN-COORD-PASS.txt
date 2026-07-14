@@ -1,0 +1,51 @@
+PCMRITMS-BRAIN-COORD-PASS
+Phoenix V3.1 — PCMRITMS Brain Coordinator Gate Review
+Date: 2026-07-14
+Verdict: PASS
+
+SUMMARY
+  Energy-normalized testing demonstrates 6–8% equivalent energy improvement
+  during transient, launch, and N-1 fault scenarios.
+
+  Demand coverage remained 100% with zero additional shortfalls while reducing
+  active cartridge participation by approximately 0.4–0.5 cartridges on average.
+
+  Recharge-chasing behavior has been successfully mitigated through hysteresis
+  and post-assist cooldown logic.
+
+  Remaining work on tow/grade opportunistic precharge: CLOSED (2026-07-14).
+  Empty-buffer tow refill is plant Loop C only; brain precharges solely in
+  post-assist/surge recovery. Tow A/B now identical (dfuel raw/eqBuf = 0).
+
+PROVEN
+  Assist / surge activation under filtered-residual launches
+  Cartridge softening (~0.4–0.5 mean active) with 100% cover, shortfalls 0
+  R/A collapsed to ~0.1–0.3 (hysteresis + post-assist cooldown)
+  N-1 fault arm: assist/surge with no shortfall increase
+  Low-buffer launch: real assist participation (R/A ~0.22)
+  Steady-state (mixed/highway): fuel-neutral / non-intrusive
+  Tow/grade: brain pass-through (no opportunistic / emergency precharge)
+  fuelEqBuf (buffer SoC restore): +6.2% to +8.2% on transient / launch / N-1
+
+KEY STRESS NUMBERS (quick harness, post tow fix)
+  transient       fuelEqBuf +8.2%   R/A 0.12   carts 4.2->3.7
+  low_buf_launch  fuelEqBuf +6.2%   R/A 0.22   carts 4.2->3.7
+  n1_transient    fuelEqBuf +7.1%   R/A 0.19   carts 4.0->3.6
+  tow_grade       fuelEqBuf  0.0%   a/s/p 0/0/0 (identical OFF/ON)
+
+REMAINING WORK
+  Coordinator calib: CLOSED. See GATE6-BACKLOG.txt for post-coordinator focus:
+  physics twin, rotor phasing, endurance, health-aware assist, HIL VV-001,
+  fleet weight adaptation. Optional polish: assist authority cap only.
+
+EVIDENCE
+  docs/evidence-pack/PCMRITMS-BRAIN-AB-STUDY.txt
+  docs/evidence-pack/PCMRITMS-BRAIN-STRESS-AB.txt
+  docs/evidence-pack/GATE6-ATPE-BRAIN-REVIEW.txt
+  scripts/run_pcmritms_brain_study.py
+  scripts/run_pcmritms_stress_study.py
+
+GENERATIONS
+  Gen1 aggressive recharge chase
+  Gen2 benefit-seeking / fuel-neutral steady
+  Gen3 hysteresis + cooldown + steady suppress + energy-normalized eval → PASS

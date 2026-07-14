@@ -460,6 +460,7 @@ __all__ = [
     "build_default_twin",
     "build_gate1_twin",
     "build_phoenix_v3_twin",
+    "build_dynamic_ring_twin",
     "build_performance_twin",
     "build_body_twins",
 ]
@@ -495,6 +496,26 @@ def build_phoenix_v3_twin(
         phase1_config(rotor_coupled=rotor_coupled),
         tuning_path=tuning_path,
         v3_cycles=v3_cycles,
+    ))
+
+
+def build_dynamic_ring_twin(
+    rotor_coupled: bool = False,
+    *,
+    probe_cycles: int = 6,
+    fast_probe: bool = True,
+    pcmritms_brain_enabled: bool = True,
+    closed_loop_surge: bool = True,
+) -> Powertrain:
+    """Phase-1 SUV twin with Gate-5 dynamic ring cartridge dispatch."""
+    from .config import with_dynamic_ring
+
+    return Powertrain(with_dynamic_ring(
+        phase1_config(rotor_coupled=rotor_coupled),
+        probe_cycles=probe_cycles,
+        fast_probe=fast_probe,
+        pcmritms_brain_enabled=pcmritms_brain_enabled,
+        closed_loop_surge=closed_loop_surge,
     ))
 
 

@@ -1,0 +1,72 @@
+GATE-4 PRODUCTION FREEZE — Phoenix V3 Mixed Ring
+================================================
+Date: 2026-07-10
+Status: SUPERSEDED by Gate-5 (see GATE5-PRODUCTION-FREEZE.txt)
+
+EXECUTIVE DECISION
+------------------
+Freeze V3.1 hardware and geometry. Approve Option 2+1 as the production stack.
+
+FROZEN CONFIGURATION
+--------------------
+Layout:       4 micro + 6 medium + 2 large (12 cartridges)
+Schedule:     tier_blocks
+Large tier:   32.9 Hz (tuned JSON — do NOT harmonic-lock to fast/2)
+Fast tiers:   60.8 / 60.9 Hz (micro / medium tuned JSON)
+Load policy:  GATE4_PRODUCTION_LOAD_POLICY (medium-heavy)
+              micro x0.95, medium x1.00, large x0.94
+Phase:        Option 2+1 (per-tier NVH phase layout on frozen frequencies)
+
+Code entry point:
+  designs.phoenix_v3_mixed_ring.build_gate4_production_options()
+
+VALIDATED PERFORMANCE (12 cycles, Option 2+1)
+-----------------------------------------------
+Total electrical power:   313.2 kW
+Ring efficiency:          54.7%
+Energy balance:           PASS
+Boundary:                 PASS
+Tier RBI (tRBI):          1.27%  (target <5% PASS)
+Peak resultant force:     1290 N   (target <1000 N OPEN)
+Spring recovery:          95%
+
+vs homogeneous 12x medium reference (351.1 kW, 55.0%):
+  -37.9 kW, -0.3 pp efficiency for heterogeneous architecture
+
+WITHIN-TIER RBI (Option 2+1)
+----------------------------
+Micro:   0.04%  PASS
+Large:   0.04%  PASS
+Medium:  6.23%  WARN — capture/stroke dispersion (bimodal ~63% vs ~79%)
+
+Medium capture bimodality is phase-placement driven, not geometry or tuning.
+
+HARMONIC LOCK REJECTED
+----------------------
+Exact 2:1 harmonic costs ~1-2 pp efficiency and 10-13 kW for minimal NVH gain.
+Large tier optimum is ~33 Hz (tuned), not fast-bank/2.
+
+LAYOUT REJECTED
+---------------
+micro_medium_ring peaks at 2472 N without phase — tier_blocks confirmed.
+
+GATE-5 NEXT STEP
+----------------
+Optimize medium cartridge phase offsets only:
+  Target medium RBI <3%
+  Target peak force <1200 N
+  Maintain eta >54.5%, P >310 kW
+
+Script: scripts/run_gate5_medium_phase_study.py
+Code:   designs.phoenix_v3_mixed_ring.optimize_gate5_medium_phases()
+
+DO NOT CHANGE FOR GATE-4
+------------------------
+- Harmonic lock
+- Ring layout (stay tier_blocks)
+- Large cartridge retune
+
+See also:
+  docs/evidence-pack/GATE4-DYNAMICS-STUDY.txt
+  docs/evidence-pack/GATE5-MEDIUM-PHASE-STUDY.txt
+  docs/evidence-pack/V31-RING-DYNAMICS-STUDY.txt

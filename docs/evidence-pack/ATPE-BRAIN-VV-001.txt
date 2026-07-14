@@ -1,0 +1,19 @@
+ATPE-BRAIN-VV-001
+Phoenix V3.1 — HIL verification stub
+Date: 2026-07-14
+Status: ADVANCED (software stub; not physical rack HIL)
+
+SCOPE
+  BrainCommands → DeterministicEcuStub → acknowledgment checks:
+    - latency budget <= 50 ms
+    - ECU cannot invent enabled indices beyond brain command
+    - watchdog trip holds last ECU setpoints (AI cannot bypass)
+
+RUN
+  py -3 scripts/run_atpe_brain_vv_001.py
+
+EXIT
+  OVERALL=PASS expected on nominal host.
+
+NEXT
+  Replace stub with ECU map latency injectors on rack when hardware available.

@@ -1,0 +1,11 @@
+GATE-5 MEDIUM-PHASE STUDY
+Layout: 4/6/2
+
+Gate-4 production freeze (Option 2+1)      313.2  54.7%     1292    6.23   10.49  63.4, 63.4, 65.3, 79.0, 79.0, 79.0
+Gate-5 medium-phase refinement             313.2  54.7%      363    0.00    0.00  79.0, 79.0, 79.0, 79.0, 79.0, 79.0
+
+Gate-5 target check:
+  [PASS] Power: 313.2 kW
+  [PASS] Efficiency: 54.7%
+  [PASS] Medium RBI: 0.00% (was 6.23%)
+  [PASS] Peak force: 363 N

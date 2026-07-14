@@ -1,0 +1,13 @@
+GATE-4 DYNAMICS STUDY
+Layout: 4/6/2
+Large tier: 32.9 Hz (tuned JSON — not harmonic-locked)
+
+Gate-4 frozen (baseline)          tier_blocks          313.4  54.1%     1299   28.0   0.08   5.92   0.00
+Option 1: phase NVH only          tier_blocks          313.4  54.1%     1290   28.0   0.08   6.23   0.05
+Option 2: medium-heavy load       tier_blocks          313.1  54.7%     1299   28.0   0.04   5.92   0.00
+Option 2+1: medium-heavy + phase  tier_blocks          313.2  54.7%     1290   28.0   0.04   6.23   0.04
+Option 3: micro_medium_ring       micro_medium_ring    313.4  54.1%     2472   28.0   0.08   5.92   0.00
+Option 3+1: micro_medium_ring + phase  micro_medium_ring    313.4  54.1%     1301   28.0   0.08   6.20   0.00
+
+Production freeze: tier_blocks + GATE4_FROZEN_LOAD_POLICY + tuned 32.9 Hz large.
+Harmonic lock to 2:1 rejected — unfavorable power/efficiency trade.

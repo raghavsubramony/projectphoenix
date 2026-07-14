@@ -1,0 +1,18 @@
+V3.1 MIXED RING DYNAMICS STUDY
+Layout: 4/6/2
+Target large Hz (fast/2): 30.43
+Cycles per cartridge: 12
+
+baseline (unity)         315.7 kW  eta 53.8% [WARN]  tRBI 1.23% [WARN]  peak  1299 N [WARN]  beat 28.0 Hz  harm 1.848 [WARN]
+harmonic large Hz        304.6 kW  eta 52.3% [WARN]  tRBI 1.23% [WARN]  peak  1268 N [WARN]  beat 30.5 Hz  harm 2.000 [PASS]
+V31 load policy          313.4 kW  eta 54.1% [PASS]  tRBI 1.21% [WARN]  peak  1299 N [WARN]  beat 28.0 Hz  harm 1.848 [WARN]
+harmonic + V31 load      302.2 kW  eta 52.5% [WARN]  tRBI 1.22% [WARN]  peak  1268 N [WARN]  beat 30.5 Hz  harm 2.000 [PASS]
+V3.1 recommended         313.4 kW  eta 54.1% [PASS]  tRBI 1.29% [WARN]  peak  1290 N [WARN]  beat 28.0 Hz  harm 1.848 [WARN]
+V3.1 + harmonic (experimental)   302.8 kW  eta 52.6% [WARN]  tRBI 1.71% [WARN]  peak  1260 N [WARN]  beat 30.5 Hz  harm 2.000 [PASS]
+
+Best NVH scenario: V3.1 + harmonic (experimental)
+
+Note: harmonic lock adjusts large tier frequency_hz within tier bounds.
+Changing Hz alone (without large-tier corpus re-tune) can reduce harvest.
+Phase optimization minimizes lumped peak resultant force (NVH proxy).
+Recommended production path: V31 load policy on tuned 32.9 Hz large JSON.

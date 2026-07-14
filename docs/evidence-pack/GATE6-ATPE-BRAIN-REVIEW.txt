@@ -1,0 +1,103 @@
+GATE6-ATPE-BRAIN-REVIEW
+Phoenix V3.1 — Systems-Engineering Assessment of ATPE Brain
+Date: 2026-07-14
+Status: Gate-5 achieved; Gate-6 started (closed-loop surge + twin fidelity scaffold)
+
+PURPOSE
+  Capture the architectural review of ATPE Brain as an optimization /
+  coordination layer (not a real-time actuator controller), with honest
+  evidence attribution and a Gate-6 investment ranking.
+
+LAYER SEPARATION
+  Layer 3  ATPE Brain          atpe_brain/          (predict / coordinate / optimize)
+           ↓ BrainCommands
+  Layer 2  Deterministic ECUs designs/phoenix_v3/controls.py
+           ↓ actuator signals
+  Layer 1  Physical Engine    designs/phoenix_v3_simulation.py
+
+  Benefits: determinism at actuators; predictive optimization at supervisor;
+  isolation between AI decisions and safety-critical execution.
+
+SUPERVISORY LOOP ORDER (ATPESupervisor.cycle)
+  1. State estimation
+  2. Health assessment
+  3. Fault resolution
+  4. PCMRITMS coordination   (assist / pre-charge / burst gate)
+  5. Digital-twin prediction
+  6. Cartridge scheduling
+  7. Ring balancing
+  8. Thermal planning
+  9. Multi-objective optimization → BrainCommands
+
+  Ordering ensures decisions use best state, health/fault topology, buffer
+  energy, and a forward prediction before commit.
+
+PCMRITMS PLACEMENT
+  Bus demand → PCMRITMS coordinator → engine schedule demand → scheduler
+
+  Intended effects: buffer owns spikes; fewer cartridge transitions; lower
+  thermal cycling; better fuel on transient cycles.
+
+EVIDENCE ATTRIBUTION (honesty)
+  Gate-5 dynamic-ring vs tier-lump fuel (BEFORE brain-PCMRITMS wiring):
+    mixed 5.45 → 5.17 L/100 km   (docs DYNAMIC-RING-TWIN-STUDY)
+  That delta must NOT be attributed to brain-PCMRITMS coordination alone.
+  Brain-PCMRITMS on/off delta is measured separately in:
+    PCMRITMS-BRAIN-AB-STUDY.txt
+    (scripts/run_pcmritms_brain_study.py)
+
+  Quick A/B (300 s, rotor_coupled, CS SoC): first aggressive policy —
+    mixed   OFF 5.24 → ON 5.30   (ON worse)
+    highway OFF 5.23 → ON 5.39   (ON worse)
+  Benefit-seeking + energy-normalized stress (see COORD-PASS): Gen3 PASS.
+
+GATE-6 STATUS (Gen3 — PASS; calib closed)
+  Verdict: PASS — PCMRITMS-BRAIN-COORD-PASS.txt
+  Energy-normalized (fuelEqBuf): +6–8% on transient / launch / N-1
+  Cover 100%, shortfalls 0; carts -0.4 to -0.5; R/A ~0.1–0.3
+  Tow/grade: CLOSED — identical OFF/ON
+  Backlog: docs/evidence-pack/GATE6-BACKLOG.txt
+    1 physics twin  2 rotor phasing  3 endurance
+    4 health-aware assist  5 HIL VV-001  6 fleet weights
+
+FAULT TOLERANCE (Gate-5 evidence)
+  Slot 5 isolated; ~250 kW maintained on 9 cartridges (N-1).
+  HealthMonitor → FaultManager enables derate / predictive isolation.
+
+MATURITY
+  Supervisory architecture     Mature
+  ECU separation               Mature
+  Demand scheduling            Mature
+  PCMRITMS brain integration   PASS (Gen3; calib closed)
+  N-1 fault recovery           Mature
+  Health monitoring            Advanced prototype
+  Digital twin                 Intermediate (probe; physics scaffold)
+  Thermal prediction           Prototype
+  Fleet learning               Planned
+  HIL validation               Pending
+  Closed-loop rotor phasing    Pending (assist-error trim only today)
+
+GATE-6 INVESTMENT RANKING (post-coordinator)
+  1. Full physics digital twin (replace probe extrapolation)
+  2. Closed-loop per-rotor PCMRITMS phasing
+  3. Long-duration endurance validation
+  4. Health-aware assist prioritization
+  5. HIL verification (ATPE-BRAIN-VV-001)
+  6. Fleet-learning weight adaptation (weights only; never safety/ECU)
+
+RISKS (open)
+  - Open-loop per-rotor phase coordination (sync drift / over-assist)
+  - Probe twin fidelity limits thermal / aging horizon quality
+  - Cascaded local optimizers (scheduler → balancer → thermal → score)
+
+GATE-6 STARTED IN CODE (2026-07-14)
+  - PcmritmsCoordinator Gen3 PASS (assist feedback, hysteresis, recovery-only
+    precharge, fuelEqBuf harness)
+  - DigitalTwin multi-horizon bundle (control / thermal / health)
+  - PhysicsTwinBackend scaffold (probe backend default; physics TBD)
+
+OVERALL
+  Gate-5: achieved on ring evidence.
+  PCMRITMS coordinator: PASS — leave calib; invest in twin / rotor / V&V.
+  Gate-6 residual: fidelity, closed-loop rotor, endurance, HIL, fleet weights
+  — not a fundamental supervisory redesign.

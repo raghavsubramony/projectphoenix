@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phoenix ATPE V3 - Interactive Schematic &amp; Solver</title>
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #030712; }
+    .font-tech { font-family: 'Share Tech Mono', monospace; }
+    .font-display { font-family: 'Orbitron', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #111827; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+  </style>
+</head>
+<body class="text-gray-100 overflow-x-hidden min-h-screen flex flex-col relative select-none">
+
+  <!-- Toast Notification Overlay -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Header -->
+  <header class="border-b border-gray-800 bg-gray-950 px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 bg-gradient-to-tr from-orange-600 to-red-500 rounded-lg p-2 flex items-center justify-center shadow-lg shadow-orange-500/20">
+        <svg class="w-full h-full text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 22h20L12 2zM12 6l7.5 13h-15L12 6z"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300 font-display">PHOENIX ATPE</h1>
+          <span class="bg-cyan-500/10 text-cyan-400 text-xs font-bold px-2 py-0.5 rounded border border-cyan-500/30">V3 SOLVER</span>
+        </div>
+        <p class="text-xs text-gray-400 font-tech uppercase tracking-widest">Resonant Physics &amp; Thermodynamic Parameter Optimizer</p>
+      </div>
+    </div>
+
+    <!-- Active State Monitor & Utility Hub -->
+    <div class="flex items-center gap-3 flex-wrap">
+      <div class="flex gap-3 items-center mr-2">
+        <span class="text-xs text-gray-500 font-tech">SYSTEM STABILITY</span>
+        <div id="stability-badge" class="px-4 py-1.5 rounded-full font-display text-xs font-bold border bg-emerald-950/20 border-emerald-500/40 text-emerald-400 flex items-center gap-2">
+          <span id="stability-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          <span id="stability-text">STABLE RES_STEADY</span>
+        </div>
+      </div>
+      
+      <button id="sound-btn" class="flex items-center gap-2 px-3 py-1.5 rounded bg-gray-900 border border-gray-700 hover:border-cyan-500 text-gray-400 hover:text-cyan-400 text-xs transition">
+        <i id="sound-icon" class="fa-solid fa-volume-mute"></i>
+        <span class="font-tech">AUDIO HUM: OFF</span>
+      </button>
+
+      <div class="flex gap-1.5">
+        <!-- CLEANSED EXPORT UTILITIES -->
+        <button id="copy-code-btn" class="flex items-center gap-2 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 font-bold text-xs transition shadow-lg">
+          <i class="fa-solid fa-copy"></i>
+          <span class="font-display">1-CLICK COPY CODE</span>
+        </button>
+        <button id="download-source-btn" class="flex items-center gap-2 px-3 py-1.5 rounded bg-gradient-to-r from-emerald-600 to-teal-500 text-white hover:from-emerald-500 hover:to-teal-400 font-bold text-xs shadow-lg transition">
+          <i class="fa-solid fa-file-arrow-down"></i>
+          <span class="font-display">DOWNLOAD HTML</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Optimization Presets Selector -->
+  <div class="bg-gray-900 border-b border-gray-800 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 text-xs font-tech">
+    <div class="flex items-center gap-2">
+      <span class="text-gray-400 uppercase tracking-wider">Simulation Preset Config:</span>
+      <div class="flex gap-2">
+        <button id="preset-optimal" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded font-bold transition flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-check"></i> Load Optimal Params (Score: 0.745)
+        </button>
+        <button id="preset-unstable" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded font-bold transition flex items-center gap-1.5">
+          <i class="fa-solid fa-triangle-exclamation"></i> Peak Unstable Config
+        </button>
+        <button id="preset-standard" class="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-transparent px-3 py-1 rounded font-bold transition">
+          Standard V3 Default
+        </button>
+      </div>
+    </div>
+    <div class="text-gray-400">
+      Optimized Score: <span id="telemetry-score" class="text-emerald-400 font-bold">0.744794</span>
+    </div>
+  </div>
+
+  <!-- Main Workspace Grid -->
+  <main class="flex-1 grid grid-cols-1 xl:grid-cols-12 gap-4 p-4 max-w-[1800px] mx-auto w-full">
+    
+    <!-- LEFT PANEL: Dynamic Control Panel -->
+    <section class="xl:col-span-4 flex flex-col gap-4">
+      <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 backdrop-blur flex flex-col flex-1">
+        <div class="flex justify-between items-center mb-3 border-b border-gray-800 pb-2">
+          <h3 class="text-sm font-bold tracking-wider text-gray-400 font-display">DYNAMIC SYSTEM SOLVER</h3>
+          <span class="text-[10px] text-cyan-400 font-tech">REAL-TIME SPEED TUNER</span>
+        </div>
+
+        <div class="space-y-4 flex-1 overflow-y-auto pr-1 max-h-[580px]">
+          
+          <!-- SPEED TUNING DILATION SLIDER -->
+          <div class="space-y-3 bg-amber-950/10 p-3 rounded-lg border border-amber-500/20">
+            <h4 class="text-xs font-bold text-amber-400 font-display uppercase tracking-wider flex justify-between">
+              <span>Time Dilation (Slowdown)</span>
+              <i class="fa-solid fa-clock-rotate-left"></i>
+            </h4>
+            <div>
+              <div class="flex justify-between text-xs font-tech text-gray-400 mb-1">
+                <span>SIMULATION SPEED (DIAL-IN)</span>
+                <span class="text-amber-400 font-bold animate-pulse" id="val-speed">5% (Slow-Mo)</span>
+              </div>
+              <input type="range" id="param-speed" min="1" max="100" value="5" class="w-full h-1.5 bg-gray-800 rounded appearance-none cursor-pointer accent-amber-500">
+              <div class="flex justify-between text-[10px] text-gray-600 font-tech mt-1">
+                <span>1% (Freeze Frame)</span>
+                <span>100% (Real-Time Speed)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Generator Subsystem -->
+          <div class="space-y-3 bg-black/30 p-3 rounded-lg border border-gray-800/60">
+            <h4 class="text-xs font-bold text-cyan-400 font-display uppercase tracking-wider">Generator Subsystem</h4>
+            <div>
+              <div class="flex justify-between text-xs font-tech text-gray-400 mb-1">
+                <span>Generator Force Scale</span>
+                <span class="text-cyan-400 font-bold" id="val-gen-force-scale">2.44</span>
+              </div>
+              <input type="range" id="param-gen-force-scale" min="0.5" max="5.0" step="0.01" class="w-full h-1 bg-gray-800 rounded appearance-none cursor-pointer accent-cyan-500">
+            </div>
+            <div>
+              <div class="flex justify-between text-xs font-tech text-gray-400 mb-1">
+                <span>Generator Rated Force (N)</span>
+                <span class="text-cyan-400 font-bold" id="val-gen-rated-force">7058 N</span>
+              </div>
+              <input type="range" id="param-gen-rated-force" min="2000" max="12000" step="10" class="w-full h-1 bg-gray-800 rounded appearance-none cursor-pointer accent-cyan-500">
+            </div>
+            <div>
+              <div class="flex justify-between text-xs font-tech text-gray-400 mb-1">
+                <span>Generator Spring Decouple</span>
+                <span class="text-cyan-400 font-bold" id="val-gen-spring-decouple">0.293</span>
+              </div>
+              <input type="range" id="param-gen-spring-decouple" min="0.0" max="1.0" step="0.005" class="w-full h-1 bg-gray-800 rounded appearance-none cursor-pointer accent-cyan-500">
+            </div>
+          </div>
+
+          <!-- Air Spring Subsystem -->
+          <div class="space-y-3 bg-black/30 p-3 rounded-lg border border-gray-800/60">
+            <h4 class="text-xs font-bold text-violet-400 font-display uppercase tracking-wider">Pneumatic Air Springs</h4>
+            <div>
+              <div class="flex justify-between text-xs font-tech text-gray-400 mb-1">
+                <span>Air Spring Ref Pressure (bar)</span>
+                <span class="text-violet-400 font-bold" id="val-spring-ref-bar">10.0 bar</span>
+              </div>
+              <input type="range" id="param-spring-ref-bar" min="2.0" max="25.0" step="0.1" class="w-full h-1 bg-gray-800 rounded appearance-none cursor-pointer accent-violet-500">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <span class="text-[10px] text-gray-500 block font-tech">Max Vol (cc)</span>
+                <input type="number" id="param-spring-max-cc" min="40" max="150" step="0.1" class="w-full bg-gray-950 border border-gray-800 rounded p-1 text-xs font-tech text-violet-300">
+              </div>
+              <div>
+                <span class="text-[10px] text-gray-500 block font-tech">Min Vol (cc)</span>
+                <input type="number" id="param-spring-min-cc" min="10" max="60" step="0.1" class="w-full bg-gray-950 border border-gray-800 rounded p-1 text-xs font-tech text-violet-300">
+              </div>
+            </div>
+          </div>
+
+          <!-- Water Cooling Subsystem -->
+          <div class="space-y-3 bg-sky-950/20 p-3 rounded-lg border border-sky-500/25">
+            <h4 class="text-xs font-bold text-sky-400 font-display uppercase tracking-wider flex justify-between">
+              <span>Water Jacket Cooling</span>
+              <i class="fa-solid fa-droplet"></i>
+            </h4>
+            <label class="flex items-center justify-between text-xs font-tech text-gray-400 cursor-pointer">
+              <span>Enable Water Jacket Loop</span>
+              <input type="checkbox" id="param-cooling-enabled" checked class="accent-sky-500 w-4 h-4">
+            </label>
+            <div>
+              <div class="flex justify-between text-xs font-tech text-gray-400 mb-1">
+                <span>Coolant Flow Rate (L/min)</span>
+                <span class="text-sky-400 font-bold" id="val-coolant-flow">4.2 L/min</span>
+              </div>
+              <input type="range" id="param-coolant-flow" min="0" max="10" step="0.1" value="4.2" class="w-full h-1 bg-gray-800 rounded appearance-none cursor-pointer accent-sky-500">
+            </div>
+          </div>
+
+          <!-- Combustion & Dynamic Variables -->
+          <div class="space-y-3 bg-black/30 p-3 rounded-lg border border-gray-800/60">
+            <h4 class="text-xs font-bold text-orange-400 font-display uppercase tracking-wider">Combustion &amp; Exhaust</h4>
+            <div>
+              <div class="flex justify-between text-xs font-tech text-gray-400 mb-1">
+                <span>Combustion Pressure Gain</span>
+                <span class="text-orange-400 font-bold" id="val-comb-gain">1.68</span>
+              </div>
+              <input type="range" id="param-comb-gain" min="0.5" max="3.0" step="0.01" class="w-full h-1 bg-gray-800 rounded appearance-none cursor-pointer accent-orange-500">
+            </div>
+            <div>
+              <div class="flex justify-between text-xs font-tech text-gray-400 mb-1">
+                <span>Burn Duration (ms)</span>
+                <span class="text-orange-400 font-bold" id="val-burn-duration">1.66 ms</span>
+              </div>
+              <input type="range" id="param-burn-duration" min="0.5" max="5.0" step="0.01" class="w-full h-1 bg-gray-800 rounded appearance-none cursor-pointer accent-orange-500">
+            </div>
+            <div>
+              <div class="flex justify-between text-xs font-tech text-gray-400 mb-1">
+                <span>Resonant Frequency (Hz)</span>
+                <span class="text-orange-400 font-bold" id="val-frequency">42.0 Hz</span>
+              </div>
+              <input type="range" id="param-frequency" min="25" max="80" step="0.5" class="w-full h-1 bg-gray-800 rounded appearance-none cursor-pointer accent-orange-500">
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-800">
+          <button id="btn-toggle-play" class="bg-cyan-600 hover:bg-cyan-500 text-black font-bold py-2 px-3 rounded text-xs transition font-display flex items-center justify-center gap-1">
+            <i id="play-icon" class="fa-solid fa-pause"></i>
+            <span id="play-text">PAUSE SIMULATION</span>
+          </button>
+          <button id="btn-reset" class="bg-gray-800 hover:bg-red-950 hover:text-red-400 text-gray-400 font-semibold py-2 px-3 text-xs rounded transition font-display">
+            RESET STATE
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CENTER PANEL: Interactive Hardware Core -->
+    <section class="xl:col-span-5 flex flex-col gap-4">
+      <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 flex-1 flex flex-col min-h-[480px] backdrop-blur relative overflow-hidden">
+        <div class="flex justify-between items-center mb-2 z-10">
+          <div class="flex items-center gap-2">
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+            <h3 class="text-sm font-bold tracking-wider text-gray-300 font-display">RESONANT CARTRIDGE CORE</h3>
+          </div>
+          <span class="text-[9px] font-tech text-gray-500">PROGRAMMATIC RESOLVED CAD VIEW</span>
+        </div>
+
+        <!-- Stage Presenter Announcer -->
+        <div class="mb-2 space-y-2">
+          <div id="stage-announcer" class="w-full py-2 rounded bg-cyan-500/10 border border-cyan-500/30 text-xs font-tech text-center tracking-widest text-cyan-400 font-bold uppercase transition-all duration-300">ACTIVE SCANNING DEPLOYED</div>
+          <p id="stage-detail" class="text-[10px] text-gray-500 font-tech text-center leading-relaxed px-2"></p>
+          <div id="cycle-timeline" class="flex gap-0.5 overflow-x-auto pb-0.5"></div>
+        </div>
+
+        <!-- Dynamic Drawing Canvas Container -->
+        <div id="canvas-wrap" class="flex-1 relative bg-black/60 rounded-lg border border-gray-800/60 flex items-center justify-center overflow-hidden min-h-[280px]">
+          <canvas id="engine-canvas" class="w-full h-full cursor-crosshair"></canvas>
+          <!-- Live valve state chips (corner overlay — avoids center) -->
+          <div id="valve-chips" class="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[200px] pointer-events-none z-10"></div>
+          <div id="live-telemetry" class="absolute top-2 right-2 bg-gray-950/90 border border-gray-700/80 rounded-lg px-2.5 py-1.5 font-tech text-[9px] leading-relaxed pointer-events-none z-10 min-w-[130px]"></div>
+        </div>
+
+        <!-- Component Inspector (below canvas — never obscures schematic) -->
+        <div id="canvas-hud" class="mt-2 rounded-lg border border-gray-800 bg-gray-950/90 p-3 hidden">
+          <div class="flex justify-between items-start gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span id="hud-id" class="bg-cyan-500/20 text-cyan-400 font-tech text-xs px-1.5 py-0.5 rounded font-bold">1</span>
+                <span id="hud-subsys" class="text-[10px] text-gray-500 font-tech uppercase">SUBSYSTEM</span>
+              </div>
+              <h4 id="hud-title" class="font-display text-sm font-black text-white mt-1">COMPONENT NAME</h4>
+              <p id="hud-desc" class="text-xs text-gray-300 mt-1 leading-relaxed">Detailed technical description.</p>
+              <p id="hud-detail" class="text-[11px] text-gray-500 mt-1.5 leading-relaxed"></p>
+              <p id="hud-specs" class="text-[10px] text-cyan-400/80 font-tech mt-1"></p>
+            </div>
+            <button id="hud-close" class="text-gray-500 hover:text-white text-xs shrink-0 p-1" title="Close"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+
+        <p id="canvas-hud-hint" class="mt-2 text-[10px] text-gray-600 font-tech text-center">Click a highlighted component on the schematic or in the assembly list below</p>
+
+        <div id="warning-banner" class="mt-2 p-2 rounded text-center text-xs font-tech bg-red-950/20 border border-red-800/40 text-red-400 hidden animate-pulse">
+          <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> WARNING: COMPONENT STROKE SATURATION EXCEEDED
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Telemetry Metrics -->
+    <section class="xl:col-span-3 flex flex-col gap-4">
+      <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 backdrop-blur space-y-3">
+        <h3 class="text-sm font-bold tracking-wider text-gray-400 font-display">SOLVER METRICS</h3>
+        <div class="grid grid-cols-1 gap-2 font-tech">
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">NET EFFICIENCY</span>
+            <span class="text-sm font-bold text-emerald-400" id="met-net-eff">63.46%</span>
+          </div>
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">CAPTURE FRACTION</span>
+            <span class="text-sm font-bold text-cyan-400" id="met-cap-frac">63.13%</span>
+          </div>
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">MAX BDC STROKE</span>
+            <span class="text-sm font-bold text-amber-400" id="met-max-bdc">19.829 mm</span>
+          </div>
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">PEAK PRESS (CYLINDER)</span>
+            <span class="text-sm font-bold text-orange-400" id="met-peak-press">100.5 bar</span>
+          </div>
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">COOLANT TEMP</span>
+            <span class="text-sm font-bold text-sky-400" id="met-coolant-temp">20.0 °C</span>
+          </div>
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">HEAT REJECTION</span>
+            <span class="text-sm font-bold text-sky-300" id="met-heat-reject">368 W</span>
+          </div>
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">LIVE CYL PRESSURE</span>
+            <span class="text-sm font-bold text-orange-300" id="met-live-press">1.0 bar</span>
+          </div>
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">CENTER CLEARANCE</span>
+            <span class="text-sm font-bold text-amber-300" id="met-clearance">1.2 mm</span>
+          </div>
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">GEN HARVEST</span>
+            <span class="text-sm font-bold text-emerald-300" id="met-gen-power">0 W</span>
+          </div>
+          <div class="bg-black/40 p-2.5 rounded border border-gray-800/50 flex justify-between items-center">
+            <span class="text-xs text-gray-500">CYCLE PHASE</span>
+            <span class="text-sm font-bold text-violet-300" id="met-cycle-pct">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 backdrop-blur flex flex-col min-h-[160px]">
+        <h3 class="text-sm font-bold tracking-wider text-gray-400 font-display mb-2">LIVE OSCILLOSCOPE</h3>
+        <div class="relative bg-black/60 rounded border border-gray-800 p-2 flex-1 min-h-[100px]">
+          <canvas id="scope-canvas" class="w-full h-full"></canvas>
+        </div>
+        <div class="flex gap-3 mt-1.5 text-[9px] font-tech text-gray-500">
+          <span><span class="text-orange-400">━</span> Pressure (bar)</span>
+          <span><span class="text-cyan-400">━</span> Stroke (%)</span>
+        </div>
+      </div>
+
+      <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 backdrop-blur flex-1 flex flex-col justify-between min-h-[180px]">
+        <h3 class="text-sm font-bold tracking-wider text-gray-400 font-display">PRESSURE-VOLUME ENVELOPE</h3>
+        <div class="relative bg-black/60 rounded border border-gray-800 p-2 flex-1 flex items-center justify-center">
+          <canvas id="pv-canvas" class="w-full h-full"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Horizontal Interactive Hotspot Map Grid -->
+  <footer class="border-t border-gray-800 bg-gray-950 px-6 py-4">
+    <div class="max-w-[1800px] mx-auto">
+      <span class="block text-xs font-tech text-cyan-400 mb-2 uppercase tracking-wider">Interactive Structural Assembly — click a component to highlight on schematic</span>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-5 gap-2 text-[10px] font-tech" id="component-list"></div>
+    </div>
+  </footer>
+
+  <script>
+    // --- COMPONENT MATRIX & DYNAMICS MAPS ---
+    const CYCLE_PHASES = [
+      { id: "scavenge", label: "Scavenge", short: "1", color: "text-teal-400 border-teal-500/40 bg-teal-950/30" },
+      { id: "ex_close", label: "Ex. Close", short: "2", color: "text-cyan-400 border-cyan-500/40 bg-cyan-950/30" },
+      { id: "compress", label: "Compress", short: "3-4", color: "text-violet-400 border-violet-500/40 bg-violet-950/30" },
+      { id: "inject", label: "Inject/Ign", short: "5-6", color: "text-amber-400 border-amber-500/40 bg-amber-950/30" },
+      { id: "power", label: "Power", short: "7", color: "text-orange-400 border-orange-500/40 bg-orange-950/30" },
+      { id: "blowdown", label: "Blowdown", short: "8", color: "text-red-400 border-red-500/40 bg-red-950/30" },
+      { id: "push", label: "Push", short: "9", color: "text-emerald-400 border-emerald-500/40 bg-emerald-950/30" }
+    ];
+
+    const comps = [
+      { id: "1", name: "Central Injector", subsys: "Fuel System", color: "#38bdf8",
+        desc: "High-pressure GDI solenoid delivering atomized fuel into the trapped charge at ~15° before TDC.",
+        detail: "Stage 5-6: fuel is injected into compressed air (λ≈0.95 stoichiometric target). Spray cone impinges on the hourglass waist to promote rapid vaporization before spark.",
+        specs: "Pulse width: 0.8–1.4 ms | Rail: 180 bar | Timing: end-of-compression",
+        bounds: { x: 488, y: 98, w: 24, h: 64 } },
+      { id: "2", name: "Central Spark Plug", subsys: "Ignition", color: "#fbbf24",
+        desc: "Dual-ground plug firing at peak compression to initiate rapid heat-release combustion.",
+        detail: "Ignites the premixed charge at the geometric center of the opposed-piston cavity. Dual grounds improve flame kernel stability under high swirl from scavenge.",
+        specs: "Gap: 0.8 mm | Energy: 80 mJ | Firing: post-injection dwell",
+        bounds: { x: 492, y: 336, w: 16, h: 48 } },
+      { id: "3a", name: "Intake Port A", subsys: "Breathing — Intake", color: "#22d3ee",
+        desc: "Side-A scavenge intake admitting fresh air from the ring plenum at 1.5 bar.",
+        detail: "Opens during stages 1 & 9 (scavenge) and stage 2 (trapping). Fresh charge sweeps across the bore from A→center, displacing residual exhaust gas before compression.",
+        specs: "Plenum: 1.50 bar | Port area: 420 mm² | Opens: 0–20% & 88–100% cycle",
+        bounds: { x: 358, y: 98, w: 54, h: 72 } },
+      { id: "3b", name: "Intake Port B", subsys: "Breathing — Intake", color: "#22d3ee",
+        desc: "Side-B scavenge intake — symmetric partner to port A for balanced cross-flow.",
+        detail: "Synchronized with 3a. Cross-scavenging creates a tumble field that mixes fuel vapor with intake air during the trapped-compression phase.",
+        specs: "Plenum: 1.50 bar | Cross-flow symmetry: ±2% mass balance",
+        bounds: { x: 588, y: 98, w: 54, h: 72 } },
+      { id: "4a", name: "Exhaust Port A", subsys: "Breathing — Exhaust", color: "#fb923c",
+        desc: "Side-A blowdown exhaust releasing combustion products to the exhaust ring at 1.05 bar back-pressure.",
+        detail: "Opens stage 8 (blowdown) after power stroke. High-temperature gas (600–900 K) exits before scavenge ports reopen. Valve cooling jacket tied to water loop.",
+        specs: "Back-pressure: 1.05 bar | Open: 50–88% cycle | Peak T: 850 K",
+        bounds: { x: 358, y: 328, w: 54, h: 72 } },
+      { id: "4b", name: "Exhaust Port B", subsys: "Breathing — Exhaust", color: "#fb923c",
+        desc: "Side-B blowdown exhaust — symmetric extraction path for opposed-piston symmetry.",
+        detail: "Paired with 4a for balanced pressure relief. Staged exhaust lead (0.5 ms) prevents recompression shock in the shared plenum.",
+        specs: "Staged lead: 0.5 ms | Mass flow peak: 0.12 kg/s",
+        bounds: { x: 588, y: 328, w: 54, h: 72 } },
+      { id: "5a", name: "Linear Generator A", subsys: "Power Recovery", color: "#34d399",
+        desc: "Permanent-magnet linear alternator harvesting shaft kinetic energy on side A.",
+        detail: "Halbach-array stator coils convert reciprocating magnetic flux (8 pole pairs) to AC power. Load profile peaks at mid-stroke during power phase. Water-cooled jacket prevents magnet derating above 380 K.",
+        specs: "Rated force: 7058 N | Eff: 94% | Cooling: water jacket",
+        bounds: { x: 98, y: 198, w: 114, h: 104 } },
+      { id: "5b", name: "Linear Generator B", subsys: "Power Recovery", color: "#34d399",
+        desc: "Side-B linear alternator — balanced load partner with adaptive force scaling.",
+        detail: "Balance control maintains ±5% force symmetry between A/B shafts. Generator spring decouple (0.293) isolates pneumatic spring reaction from electrical load spikes.",
+        specs: "Force scale: 2.44× | Decouple: 0.293 | Trip: 450 K",
+        bounds: { x: 788, y: 198, w: 114, h: 104 } },
+      { id: "6a", name: "Air Spring A", subsys: "Pneumatic Recovery", color: "#a78bfa",
+        desc: "End-stop pneumatic accumulator returning kinetic energy during compression stroke.",
+        detail: "Isobaric reference at 10 bar. Volume swings between 22.3–79.4 cc. Expansion gain (0.56) and compression gain (1.02) shape the return force curve to match generator load profile.",
+        specs: "Ref: 10.0 bar | Vol: 22.3–79.4 cc | Expansion gain: 0.56",
+        bounds: { x: 48, y: 213, w: 54, h: 74 } },
+      { id: "6b", name: "Air Spring B", subsys: "Pneumatic Recovery", color: "#a78bfa",
+        desc: "Side-B pneumatic spring — symmetric boundary recovery with matched compliance.",
+        detail: "Virtual end-stop ECU logic engages at 85% stroke fraction, relieving spring force to prevent hard collision at BDC.",
+        specs: "Hard stop: 98% stroke | Relief min: 55%",
+        bounds: { x: 898, y: 213, w: 54, h: 74 } },
+      { id: "8", name: "Water Jacket (Cylinder)", subsys: "Thermal — Cooling", color: "#0ea5e9",
+        desc: "Annular water jacket surrounding the hourglass combustion liner.",
+        detail: "Extracts 8% of combustion heat through the wall (18 W/K transfer). Maintains liner below 420 K rated temperature. Coolant enters bottom, exits top (counter-flow to hot waist zone).",
+        specs: "Mode: water_jacket | Base rejection: 180 W | 42 W/K rise",
+        bounds: { x: 305, y: 152, w: 390, h: 196 } },
+      { id: "8a", name: "Coolant Feed A", subsys: "Thermal — Cooling", color: "#0ea5e9",
+        desc: "Generator-A coolant inlet from shared ring manifold at 20 °C.",
+        detail: "Supplies the linear generator stator jacket. Flow proportional to coolant pump rate. Rejects copper & magnet losses before coil resistance derates efficiency.",
+        specs: "Inlet: 20 °C | Flow share: 50% | ΔT max: 12 K",
+        bounds: { x: 205, y: 198, w: 50, h: 104 } },
+      { id: "8b", name: "Coolant Feed B", subsys: "Thermal — Cooling", color: "#0ea5e9",
+        desc: "Generator-B coolant inlet — return path to ring radiator.",
+        detail: "Paired with 8a on a shared coolant bus. Ring radiator dissipates aggregate heat from all cartridges via 45 W/K panel.",
+        specs: "Bus temp: 20–35 °C | Radiator: 45 W/K | Shared loop",
+        bounds: { x: 745, y: 198, w: 50, h: 104 } },
+      { id: "7a", name: "Mag Bearing A", subsys: "Suspension", color: "#06b6d4",
+        desc: "Active radial magnetic bearing — non-contact shaft guidance on side A.",
+        detail: "Eliminates mechanical friction on the reciprocating shaft. Radial gap sensing maintains ±0.05 mm centering under combustion shock loads.",
+        specs: "Gap: 0.5 mm | Stiffness: 1.2 MN/m | Loss: <2 W",
+        bounds: { x: 252, y: 203, w: 34, h: 92 },
+        rings: [{ x: 258, y: 206, w: 24, h: 34 }, { x: 258, y: 256, w: 24, h: 34 }] },
+      { id: "7b", name: "Mag Bearing B", subsys: "Suspension", color: "#06b6d4",
+        desc: "Side-B active magnetic bearing — paired radial alignment.",
+        detail: "Differential position feedback between 7a/7b detects shaft bow under asymmetric combustion pressure and applies corrective radial force.",
+        specs: "Balance gain: 0.85 | Max correction: 120 N",
+        bounds: { x: 714, y: 203, w: 34, h: 92 },
+        rings: [{ x: 718, y: 206, w: 24, h: 34 }, { x: 718, y: 256, w: 24, h: 34 }] }
+    ];
+
+    const configOptimal = {
+      score: 0.744794, stable: true,
+      metrics: { net_efficiency: 0.634636, capture_fraction: 0.631259, max_bdc_mm: 19.829, elec_energy_j: 552.84, peak_pressure_bar: 100.5, coolant_temp_c: 28.4, heat_rejection_w: 368 },
+      parameters: { generator_force_scale: 2.44, generator_rated_force_n: 7058, generator_spring_decouple: 0.293, air_spring_reference_bar: 10.0, air_spring_max_cc: 79.4, air_spring_min_cc: 22.3, air_spring_expansion_gain: 0.56, air_spring_compression_gain: 1.02, load_fraction: 0.94, frequency_hz: 42.0, combustion_pressure_gain: 1.68, burn_duration_ms: 1.66, water_cooling_enabled: true, coolant_flow_lpm: 4.2, exhaust_open_ms: 8.8 }
+    };
+
+    const configUnstable = {
+      score: 0.321100, stable: false,
+      metrics: { net_efficiency: 0.67117, capture_fraction: 0.450875, max_bdc_mm: 22.216, elec_energy_j: 320.12, peak_pressure_bar: 125.4, coolant_temp_c: 48.2, heat_rejection_w: 210 },
+      parameters: { generator_force_scale: 1.15, generator_rated_force_n: 9500, generator_spring_decouple: 0.05, air_spring_reference_bar: 4.5, air_spring_max_cc: 110.0, air_spring_min_cc: 15.0, air_spring_expansion_gain: 0.25, air_spring_compression_gain: 1.85, load_fraction: 0.98, frequency_hz: 55.0, combustion_pressure_gain: 2.55, burn_duration_ms: 2.85, water_cooling_enabled: true, coolant_flow_lpm: 2.0, exhaust_open_ms: 8.8 }
+    };
+
+    let params = { ...configOptimal.parameters };
+    let currentScore = configOptimal.score;
+    let isStable = true;
+    let currentMetrics = { ...configOptimal.metrics };
+
+    let engineRunning = true, cycleAngle = 0.0, position = 0.024, inCylinderPressure = 1.013;
+    let simSpeedMultiplier = 0.05, val_offset = 0, ex_offset = 0, isInjecting = false, sparkActive = false;
+    let pvHistory = [], waveHistory = [], collisionOccurred = false;
+    let liveClearanceMm = 1.2, liveGenPowerW = 0, liveCyclePct = 0;
+    let audioCtx = null, masterGain = null;
+    let humOsc = null, humHarmonic = null, humGain = null, harmGain = null;
+    let intakeNoiseGain = null, intakeNoiseSrc = null;
+    let noiseBuffer = null;
+    let soundEnabled = false, lastSparkState = false, lastInjectState = false;
+    let selectedCompId = null, hoveredCompId = null, currentCyclePhase = null;
+    let coolantAnimPhase = 0;
+
+    const canvas = document.getElementById('engine-canvas'), ctx = canvas.getContext('2d');
+    const pvCanvas = document.getElementById('pv-canvas'), pvCtx = pvCanvas.getContext('2d');
+    const scopeCanvas = document.getElementById('scope-canvas'), scopeCtx = scopeCanvas.getContext('2d');
+
+    function initUI() {
+      document.getElementById('preset-optimal').onclick = () => applyPreset(configOptimal);
+      document.getElementById('preset-unstable').onclick = () => applyPreset(configUnstable);
+      document.getElementById('preset-standard').onclick = () => applyPreset({
+        score: 0.584, stable: true,
+        metrics: { net_efficiency: 0.48, capture_fraction: 0.52, max_bdc_mm: 17.5, elec_energy_j: 410, peak_pressure_bar: 85 },
+        parameters: { generator_force_scale: 2.0, generator_rated_force_n: 6000, generator_spring_decouple: 0.2, air_spring_reference_bar: 8.0, air_spring_max_cc: 80, air_spring_min_cc: 25, air_spring_expansion_gain: 0.5, air_spring_compression_gain: 1.0, load_fraction: 0.85, frequency_hz: 45, combustion_pressure_gain: 1.4, burn_duration_ms: 1.8, water_cooling_enabled: true, coolant_flow_lpm: 3.5, exhaust_open_ms: 8.8 }
+      });
+
+      document.getElementById('param-speed').oninput = (e) => {
+        simSpeedMultiplier = parseFloat(e.target.value) / 100;
+        document.getElementById('val-speed').innerText = `${e.target.value}% ${simSpeedMultiplier === 1 ? '(Real-Time)' : '(Slow-Mo)'}`;
+      };
+
+      // Cleaned Export Bindings
+
+      document.getElementById('copy-code-btn').onclick = copyHTMLToClipboard;
+
+      document.getElementById('download-source-btn').onclick = downloadSimulatorHTML;
+
+
+
+      // Mapping tuning controllers
+
+      mapSlider('param-gen-force-scale', 'val-gen-force-scale', 'generator_force_scale', '', 2);
+
+      mapSlider('param-gen-rated-force', 'val-gen-rated-force', 'generator_rated_force_n', ' N', 0);
+
+      mapSlider('param-gen-spring-decouple', 'val-gen-spring-decouple', 'generator_spring_decouple', '', 3);
+
+      mapSlider('param-spring-ref-bar', 'val-spring-ref-bar', 'air_spring_reference_bar', ' bar', 1);
+
+      mapSlider('param-comb-gain', 'val-comb-gain', 'combustion_pressure_gain', '', 2);
+
+      mapSlider('param-burn-duration', 'val-burn-duration', 'burn_duration_ms', ' ms', 2);
+
+      mapSlider('param-frequency', 'val-frequency', 'frequency_hz', ' Hz', 1);
+
+      mapNumberInput('param-spring-max-cc', 'air_spring_max_cc');
+      mapNumberInput('param-spring-min-cc', 'air_spring_min_cc');
+
+      mapSlider('param-coolant-flow', 'val-coolant-flow', 'coolant_flow_lpm', ' L/min', 1);
+      document.getElementById('param-cooling-enabled').onchange = (e) => {
+        params.water_cooling_enabled = e.target.checked;
+        recalculateTuning();
+      };
+
+      buildCycleTimeline();
+      buildValveChips();
+
+      document.getElementById('sound-btn').onclick = toggleAudioHum;
+
+      canvas.addEventListener('click', (e) => {
+        const hit = hitTestComponent(canvasToLogical(e));
+        if (hit) selectComponent(hit);
+      });
+      canvas.addEventListener('mousemove', (e) => {
+        const hit = hitTestComponent(canvasToLogical(e));
+        hoveredCompId = hit ? hit.id : null;
+        canvas.style.cursor = hit ? 'pointer' : 'crosshair';
+      });
+      canvas.addEventListener('mouseleave', () => { hoveredCompId = null; });
+
+      document.getElementById('btn-toggle-play').onclick = (e) => {
+
+        engineRunning = !engineRunning;
+
+        document.getElementById('play-text').innerText = engineRunning ? "PAUSE SIMULATION" : "PLAY SIMULATION";
+
+        document.getElementById('play-icon').className = engineRunning ? "fa-solid fa-pause" : "fa-solid fa-play";
+
+      };
+
+
+
+      document.getElementById('btn-reset').onclick = resetSimulation;
+
+
+
+      const grid = document.getElementById('component-list');
+
+      comps.forEach(c => {
+
+        const item = document.createElement('button');
+
+        item.dataset.compId = c.id;
+        item.className = "comp-btn bg-gray-900 border border-gray-800 p-2 rounded text-left truncate hover:border-cyan-500 transition flex flex-col justify-between";
+
+        item.innerHTML = `<span class="text-cyan-400 font-bold">[${c.id}]</span> <span class="text-gray-300 truncate">${c.name}</span><span class="text-[9px] text-gray-600 truncate">${c.subsys}</span>`;
+
+        item.onclick = () => selectComponent(c);
+
+        grid.appendChild(item);
+
+      });
+
+
+
+      document.getElementById('hud-close').onclick = closeComponentHud;
+
+
+
+      window.onresize = resizeCanvases;
+
+      resizeCanvases();
+
+     
+
+ applyPreset(configOptimal);
+
+    }// --- PLATFORM SCRIPTS EXCLUSION & CLEANING FILTER ---
+
+    function getCleanedSourceCode() {
+
+      // Create a temporary clone of the current Document structure
+
+      const docClone = document.documentElement.cloneNode(true);
+
+      
+
+      // 1. Strip dynamic runtime styles injected by the Tailwind compilation engine to keep standard CDN imports
+
+      const styleTags = docClone.querySelectorAll('style');
+
+      styleTags.forEach((style, index) => {
+
+        // Index 0 corresponds to the original custom fonts and webkit scrolling rules, remove everything else
+
+        if (index > 0) {
+
+          style.remove();
+
+        }
+
+      });
+
+
+
+      // 2. Clear out platform background scripts (screenshot adapters, dynamic bridge connections)
+
+      const scripts = docClone.querySelectorAll('script');
+
+      scripts.forEach(script => {
+
+        const hasBardMarker = script.hasAttribute('data-bard-injected') || script.hasAttribute('data-bard-bridge');
+
+        const content = script.textContent || "";
+
+        const isPlatformScript = content.includes("firebaseAuthBridge") || 
+
+                                 content.includes("firebaseConfig") || 
+
+                                 content.includes("window.firebase") ||
+
+                                 content.includes("MAKE_SCREENSHOT") ||
+
+                                 script.src.includes("firebase") ||
+
+                                 script.src.includes("chrome-extension");
+
+        
+
+        // Retain only our solver logic block and Tailwind CSS library import
+
+        const isSolverScript = !script.src && content.includes("configOptimal");
+
+        const isTailwindCDN = script.src && script.src.includes("tailwind");
+
+        
+
+        if (!isSolverScript && !isTailwindCDN) {
+
+          script.remove();
+
+        }
+
+      });
+
+
+
+      // 3. Reset the dynamic containers back to pristine initialization state
+
+      const compList = docClone.querySelector('#component-list');
+
+      if (compList) compList.innerHTML = ""; // Clears dynamic runtime duplicates
+
+
+
+      const toastCont = docClone.querySelector('#toast-container');
+
+      if (toastCont) toastCont.innerHTML = "";
+
+
+
+      const stageAnnouncer = docClone.querySelector('#stage-announcer');
+
+      if (stageAnnouncer) {
+
+        stageAnnouncer.innerText = "ACTIVE SCANNING DEPLOYED";
+
+        stageAnnouncer.className = "w-full py-2 rounded bg-cyan-500/10 border border-cyan-500/30 text-xs font-tech text-center tracking-widest text-cyan-400 font-bold uppercase transition-all duration-300";
+
+      }
+
+
+
+      // 4. Remove active dimensions on canvases so they calculate dynamically on launch
+
+      const canvases = docClone.querySelectorAll('canvas');
+
+      canvases.forEach(c => {
+
+        c.removeAttribute('width');
+
+        c.removeAttribute('height');
+
+        c.style.width = "";
+
+        c.style.height = "";
+
+      });
+
+
+
+      return "<!DOCTYPE html>\n" + docClone.outerHTML;
+
+    }
+
+
+
+    function copyHTMLToClipboard() {
+      const cleanSource = getCleanedSourceCode();
+      const onSuccess = () => showToast("SUCCESS: Pristine, clean code copied! Ready to run.", "emerald");
+      const onFail = () => showToast("Clipboard write blocked.", "amber");
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(cleanSource).then(onSuccess).catch(onFail);
+        return;
+      }
+
+      const el = document.createElement('textarea');
+      el.value = cleanSource;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      try {
+        document.execCommand('copy') ? onSuccess() : onFail();
+      } catch (err) {
+        showToast("Error executing copy pipeline.", "red");
+      }
+      document.body.removeChild(el);
+    }
+
+
+
+    function downloadSimulatorHTML() {
+
+      const cleanSource = getCleanedSourceCode();
+
+      const b = new Blob([cleanSource], { type: 'text/html' });
+
+      const a = document.createElement('a');
+
+      a.href = URL.createObjectURL(b);
+
+      a.download = 'phoenix_atpe_v3.html';
+
+      try {
+
+        document.body.appendChild(a); 
+
+        a.click(); 
+
+        document.body.removeChild(a);
+
+        showToast("Clean HTML downloaded completely!", "emerald");
+
+      } catch(e) {
+
+        showToast("Download blocked. Please use the Copy Code button!", "amber");
+
+      }
+
+    }
+
+
+
+    function showToast(m, col) {
+
+      const box = document.getElementById('toast-container'), t = document.createElement('div');
+
+      let brd = "border-cyan-500/40 text-cyan-400 bg-cyan-950/90";
+
+      if(col==="emerald") brd = "border-emerald-500/40 text-emerald-400 bg-emerald-950/90";
+
+      if(col==="amber") brd = "border-amber-500/40 text-amber-400 bg-amber-950/90";
+
+      t.className = `p-3 rounded-lg border font-tech text-xs pointer-events-auto shadow-lg backdrop-blur transition-all duration-300 ${brd}`;
+
+      t.innerText = m;
+
+      box.appendChild(t);
+
+      setTimeout(() => { if(t.parentElement) box.removeChild(t); }, 4000);
+
+    }
+
+
+
+    function selectComponent(c) {
+      selectedCompId = c.id;
+      const hud = document.getElementById('canvas-hud');
+      const hint = document.getElementById('canvas-hud-hint');
+      hud.classList.remove('hidden');
+      hint.classList.add('hidden');
+      hud.style.borderColor = c.color + '66';
+      document.getElementById('hud-id').innerText = c.id;
+      document.getElementById('hud-id').style.color = c.color;
+      document.getElementById('hud-id').style.backgroundColor = c.color + '22';
+      document.getElementById('hud-subsys').innerText = c.subsys;
+      document.getElementById('hud-title').innerText = c.name.toUpperCase();
+      document.getElementById('hud-desc').innerText = c.desc;
+      document.getElementById('hud-detail').innerText = c.detail || '';
+      document.getElementById('hud-specs').innerText = c.specs || '';
+      document.querySelectorAll('#component-list .comp-btn').forEach(btn => {
+        const active = btn.dataset.compId === c.id;
+        btn.classList.toggle('border-cyan-500', active);
+        btn.classList.toggle('bg-cyan-950/30', active);
+        btn.classList.toggle('ring-1', active);
+        btn.classList.toggle('ring-cyan-500/50', active);
+      });
+    }
+
+    function closeComponentHud() {
+      selectedCompId = null;
+      document.getElementById('canvas-hud').classList.add('hidden');
+      document.getElementById('canvas-hud-hint').classList.remove('hidden');
+      document.querySelectorAll('#component-list .comp-btn').forEach(btn => {
+        btn.classList.remove('border-cyan-500', 'bg-cyan-950/30', 'ring-1', 'ring-cyan-500/50');
+      });
+    }
+
+    function buildValveChips() {
+      const el = document.getElementById('valve-chips');
+      el.innerHTML = '';
+      ['INT A', 'INT B', 'EXH A', 'EXH B'].forEach((label, i) => {
+        const chip = document.createElement('span');
+        chip.id = `valve-chip-${i}`;
+        chip.className = 'px-1.5 py-0.5 rounded border border-gray-700 text-gray-600 bg-gray-900/80';
+        chip.innerText = label;
+        el.appendChild(chip);
+      });
+    }
+
+    function updateValveChips(stage) {
+      const states = [
+        stage.intake, stage.intake,
+        stage.exhaust, stage.exhaust
+      ];
+      states.forEach((open, i) => {
+        const chip = document.getElementById(`valve-chip-${i}`);
+        if (!chip) return;
+        chip.className = open
+          ? 'px-1.5 py-0.5 rounded border text-[8px] font-bold bg-emerald-950/80 border-emerald-500/50 text-emerald-400'
+          : 'px-1.5 py-0.5 rounded border text-[8px] font-bold bg-gray-900/80 border-gray-700 text-gray-600';
+      });
+    }
+
+    function updateLiveTelemetry(cycleFrac, press, clearance, genW, stage) {
+      liveCyclePct = cycleFrac * 100;
+      document.getElementById('met-live-press').innerText = `${press.toFixed(1)} bar`;
+      document.getElementById('met-clearance').innerText = `${clearance.toFixed(2)} mm`;
+      document.getElementById('met-gen-power').innerText = `${Math.round(genW)} W`;
+      document.getElementById('met-cycle-pct').innerText = `${liveCyclePct.toFixed(1)}%`;
+      const tel = document.getElementById('live-telemetry');
+      tel.innerHTML = [
+        `<div class="text-gray-500">CYCLE <span class="text-violet-300 font-bold">${liveCyclePct.toFixed(0)}%</span></div>`,
+        `<div class="text-gray-500">P<sub>cyl</sub> <span class="text-orange-300 font-bold">${press.toFixed(1)} bar</span></div>`,
+        `<div class="text-gray-500">CLR <span class="text-amber-300 font-bold">${clearance.toFixed(1)} mm</span></div>`,
+        `<div class="text-gray-500">GEN <span class="text-emerald-300 font-bold">${Math.round(genW)} W</span></div>`,
+        `<div class="text-gray-500 truncate max-w-[120px]">${stage.id.replace('_', ' ').toUpperCase()}</div>`
+      ].join('');
+    }
+
+    function buildCycleTimeline() {
+      const el = document.getElementById('cycle-timeline');
+      el.innerHTML = '';
+      CYCLE_PHASES.forEach(p => {
+        const chip = document.createElement('div');
+        chip.dataset.phaseId = p.id;
+        chip.className = `cycle-chip flex-1 min-w-[52px] text-center py-1 px-0.5 rounded border border-gray-800 text-gray-600 transition ${p.color}`;
+        chip.innerHTML = `<div class="font-bold">${p.short}</div><div class="truncate">${p.label}</div>`;
+        el.appendChild(chip);
+      });
+    }
+
+    function updateCycleTimeline(activeId) {
+      document.querySelectorAll('.cycle-chip').forEach(chip => {
+        const on = chip.dataset.phaseId === activeId;
+        chip.classList.toggle('opacity-100', on);
+        chip.classList.toggle('scale-105', on);
+        chip.classList.toggle('shadow-lg', on);
+        chip.classList.toggle('opacity-40', !on);
+      });
+    }
+
+    function getCycleStage(cycleFrac) {
+      const exOpen = (params.exhaust_open_ms || 8.8) / 10.0;
+      if (cycleFrac < 0.15) return {
+        id: "scavenge", title: "STAGE 1: SCAVENGE — FRESH CHARGE ADMISSION",
+        detail: "Intake & exhaust ports open. Fresh air (1.5 bar plenum) sweeps residual exhaust from the hourglass bore. Cross-flow A↔B establishes tumble for mixing.",
+        col: "bg-teal-500/20 border-teal-500/50 text-teal-300",
+        intake: true, exhaust: true, inject: false, spark: false
+      };
+      if (cycleFrac < 0.20) return {
+        id: "ex_close", title: "STAGE 2: EXHAUST CLOSE — CHARGE TRAPPING",
+        detail: "Exhaust ports close while intakes remain open briefly. Trapped fresh charge fills the combustion cavity. Cylinder pressure rises to intake plenum level.",
+        col: "bg-cyan-500/20 border-cyan-500/50 text-cyan-300",
+        intake: true, exhaust: false, inject: false, spark: false
+      };
+      if (cycleFrac < 0.48) return {
+        id: "compress", title: "STAGE 3-4: TRAPPED COMPRESSION (BDC → TDC)",
+        detail: "All ports sealed. Opposed pistons move inward from BDC toward TDC, compressing trapped air from ~1.5 bar to ~40 bar (CR≈12.5). Air temperature rises adiabatically.",
+        col: "bg-violet-500/20 border-violet-500/50 text-violet-300",
+        intake: false, exhaust: false, inject: false, spark: false
+      };
+      if (cycleFrac < 0.50) return {
+        id: "inject", title: "STAGE 5-6: DIRECT INJECTION & IGNITION @ TDC",
+        detail: "At minimum clearance (TDC): GDI injector atomizes fuel into compressed air, then spark plug fires. Peak pressure builds as pistons begin the power stroke outward.",
+        col: "bg-amber-500/20 border-amber-500/50 text-amber-300",
+        intake: false, exhaust: false, inject: true, spark: true
+      };
+      if (cycleFrac < exOpen) return {
+        id: "power", title: "STAGE 7: POWER STROKE — EXPANSION (TDC → BDC)",
+        detail: "Combustion gas expands, driving opposed pistons outward from TDC toward BDC. Linear generators harvest shaft kinetic energy. Cylinder pressure decays polytropically (n≈1.35).",
+        col: "bg-orange-500/20 border-orange-500/50 text-orange-300",
+        intake: false, exhaust: false, inject: false, spark: false
+      };
+      if (cycleFrac < exOpen + 0.04) return {
+        id: "blowdown", title: "STAGE 8: BLOWDOWN — EXHAUST RELEASE",
+        detail: "Exhaust ports open. High-pressure combustion products discharge to exhaust ring (1.05 bar). ~60% of residual enthalpy expelled before scavenge.",
+        col: "bg-red-500/20 border-red-500/50 text-red-300",
+        intake: false, exhaust: true, inject: false, spark: false
+      };
+      return {
+        id: "push", title: "STAGE 9: SCAVENGE PUSH — PURGE & REFILL",
+        detail: "All ports open. Intake air pushes remaining exhaust gas out. Charge conditioning complete before next compression. Water jacket rejects combustion heat.",
+        col: "bg-emerald-500/20 border-emerald-500/50 text-emerald-300",
+        intake: true, exhaust: true, inject: false, spark: false
+      };
+    }
+
+
+
+    function mapSlider(id, valId, key, suffix = '', precision = 2) {
+      const slider = document.getElementById(id), out = document.getElementById(valId);
+      slider.oninput = (e) => {
+        params[key] = parseFloat(e.target.value);
+        out.innerText = `${params[key].toFixed(precision)}${suffix}`;
+        recalculateTuning();
+      };
+    }
+
+    function mapNumberInput(id, key) {
+      document.getElementById(id).oninput = (e) => {
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v)) {
+          params[key] = v;
+          recalculateTuning();
+        }
+      };
+    }
+
+    function canvasToLogical(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: ((e.clientX - rect.left) / rect.width) * 1000,
+        y: ((e.clientY - rect.top) / rect.height) * 500
+      };
+    }
+
+    function getCompRegions(c) {
+      return c.rings || [c.bounds];
+    }
+
+    function hitTestComponent(pt) {
+      for (let i = comps.length - 1; i >= 0; i--) {
+        const c = comps[i];
+        for (const b of getCompRegions(c)) {
+          if (pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h) return c;
+        }
+      }
+      return null;
+    }
+
+    function resetSimulation() {
+      cycleAngle = 0;
+      position = 0.006;
+      inCylinderPressure = 1.013;
+      pvHistory = [];
+      waveHistory = [];
+      collisionOccurred = false;
+      val_offset = 0;
+      ex_offset = 0;
+      isInjecting = false;
+      sparkActive = false;
+      lastSparkState = false;
+      lastInjectState = false;
+    }
+
+    function createNoiseBuffer(ctx, seconds) {
+      const len = Math.floor(ctx.sampleRate * seconds);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      return buf;
+    }
+
+    function initAudioEngine() {
+      if (audioCtx) return;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      audioCtx = new Ctx();
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.55;
+      masterGain.connect(audioCtx.destination);
+
+      humOsc = audioCtx.createOscillator();
+      humOsc.type = 'triangle';
+      humGain = audioCtx.createGain();
+      humGain.gain.value = 0;
+      humOsc.connect(humGain);
+      humGain.connect(masterGain);
+      humOsc.start();
+
+      humHarmonic = audioCtx.createOscillator();
+      humHarmonic.type = 'sine';
+      harmGain = audioCtx.createGain();
+      harmGain.gain.value = 0;
+      humHarmonic.connect(harmGain);
+      harmGain.connect(masterGain);
+      humHarmonic.start();
+
+      noiseBuffer = createNoiseBuffer(audioCtx, 2);
+      intakeNoiseSrc = audioCtx.createBufferSource();
+      intakeNoiseSrc.buffer = noiseBuffer;
+      intakeNoiseSrc.loop = true;
+      intakeNoiseGain = audioCtx.createGain();
+      intakeNoiseGain.gain.value = 0;
+      const intakeFilter = audioCtx.createBiquadFilter();
+      intakeFilter.type = 'bandpass';
+      intakeFilter.frequency.value = 420;
+      intakeFilter.Q.value = 0.6;
+      intakeNoiseSrc.connect(intakeFilter);
+      intakeFilter.connect(intakeNoiseGain);
+      intakeNoiseGain.connect(masterGain);
+      intakeNoiseSrc.start();
+
+      setHumFrequencies();
+    }
+
+    function setHumFrequencies() {
+      if (!audioCtx || !humOsc || !humHarmonic) return;
+      const f0 = Math.max(params.frequency_hz ?? 42, 20);
+      humOsc.frequency.setTargetAtTime(f0, audioCtx.currentTime, 0.04);
+      humHarmonic.frequency.setTargetAtTime(f0 * 2, audioCtx.currentTime, 0.04);
+    }
+
+    function playIgnitionPop() {
+      if (!audioCtx || !masterGain || !soundEnabled) return;
+      const t = audioCtx.currentTime;
+      const pop = audioCtx.createOscillator();
+      const popGain = audioCtx.createGain();
+      pop.type = 'square';
+      pop.frequency.setValueAtTime(180, t);
+      pop.frequency.exponentialRampToValueAtTime(60, t + 0.06);
+      popGain.gain.setValueAtTime(0.0001, t);
+      popGain.gain.exponentialRampToValueAtTime(0.18, t + 0.004);
+      popGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+      pop.connect(popGain);
+      popGain.connect(masterGain);
+      pop.start(t);
+      pop.stop(t + 0.1);
+    }
+
+    function playInjectionHiss() {
+      if (!audioCtx || !masterGain || !soundEnabled || !noiseBuffer) return;
+      const t = audioCtx.currentTime;
+      const src = audioCtx.createBufferSource();
+      src.buffer = noiseBuffer;
+      const g = audioCtx.createGain();
+      const f = audioCtx.createBiquadFilter();
+      f.type = 'highpass';
+      f.frequency.value = 800;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.06, t + 0.02);
+      g.gain.linearRampToValueAtTime(0.0001, t + 0.12);
+      src.connect(f);
+      f.connect(g);
+      g.connect(masterGain);
+      src.start(t);
+      src.stop(t + 0.14);
+    }
+
+    async function toggleAudioHum() {
+      soundEnabled = !soundEnabled;
+      const icon = document.getElementById('sound-icon');
+      const label = document.querySelector('#sound-btn span');
+
+      if (soundEnabled) {
+        initAudioEngine();
+        if (!audioCtx) {
+          soundEnabled = false;
+          showToast('Web Audio not supported in this browser.', 'amber');
+          return;
+        }
+        try {
+          if (audioCtx.state === 'suspended') await audioCtx.resume();
+        } catch (e) {
+          soundEnabled = false;
+          showToast('Audio blocked — click the button again.', 'amber');
+          return;
+        }
+        icon.className = 'fa-solid fa-volume-high';
+        label.innerText = 'AUDIO HUM: ON';
+        updateAudioHum(true);
+      } else {
+        fadeAudioOut();
+        icon.className = 'fa-solid fa-volume-mute';
+        label.innerText = 'AUDIO HUM: OFF';
+      }
+    }
+
+    function fadeAudioOut() {
+      if (!audioCtx || !humGain) return;
+      const t = audioCtx.currentTime;
+      humGain.gain.setTargetAtTime(0, t, 0.05);
+      if (harmGain) harmGain.gain.setTargetAtTime(0, t, 0.05);
+      if (intakeNoiseGain) intakeNoiseGain.gain.setTargetAtTime(0, t, 0.05);
+    }
+
+    function updateAudioHum(force) {
+      if (!soundEnabled || !audioCtx || !humGain) return;
+      if (audioCtx.state === 'suspended') return;
+
+      const t = audioCtx.currentTime;
+      setHumFrequencies();
+
+      const running = engineRunning;
+      const baseHum = running ? 0.09 : 0;
+      const harmLevel = running ? 0.035 : 0;
+      humGain.gain.setTargetAtTime(baseHum, t, 0.06);
+      if (harmGain) harmGain.gain.setTargetAtTime(harmLevel, t, 0.06);
+
+      const intakeLevel = running && currentCyclePhase && currentCyclePhase.intake && val_offset > 0.5
+        ? 0.04 + (val_offset / 12) * 0.05 : 0;
+      if (intakeNoiseGain) intakeNoiseGain.gain.setTargetAtTime(intakeLevel, t, 0.08);
+
+      if (running) {
+        if (sparkActive && !lastSparkState) playIgnitionPop();
+        if (isInjecting && !lastInjectState) playInjectionHiss();
+      }
+      lastSparkState = sparkActive;
+      lastInjectState = isInjecting;
+
+      if (force && running) {
+        humGain.gain.cancelScheduledValues(t);
+        humGain.gain.setValueAtTime(baseHum, t);
+      }
+    }
+
+
+
+    function applyPreset(preset) {
+
+      params = { ...preset.parameters };
+
+      currentScore = preset.score;
+
+      isStable = preset.stable;
+
+      currentMetrics = { ...preset.metrics };
+
+      
+
+      document.getElementById('telemetry-score').innerText = currentScore.toFixed(6);
+
+      document.getElementById('param-gen-force-scale').value = params.generator_force_scale;
+
+      document.getElementById('val-gen-force-scale').innerText = params.generator_force_scale.toFixed(2);
+
+      document.getElementById('param-gen-rated-force').value = params.generator_rated_force_n;
+
+      document.getElementById('val-gen-rated-force').innerText = `${params.generator_rated_force_n} N`;
+
+      document.getElementById('param-gen-spring-decouple').value = params.generator_spring_decouple;
+
+      document.getElementById('val-gen-spring-decouple').innerText = params.generator_spring_decouple.toFixed(3);
+
+      document.getElementById('param-spring-ref-bar').value = params.air_spring_reference_bar;
+
+      document.getElementById('val-spring-ref-bar').innerText = `${params.air_spring_reference_bar.toFixed(1)} bar`;
+
+      document.getElementById('param-comb-gain').value = params.combustion_pressure_gain;
+
+      document.getElementById('val-comb-gain').innerText = params.combustion_pressure_gain.toFixed(2);
+
+      document.getElementById('param-burn-duration').value = params.burn_duration_ms;
+
+      document.getElementById('val-burn-duration').innerText = `${params.burn_duration_ms.toFixed(2)} ms`;
+
+      document.getElementById('param-frequency').value = params.frequency_hz ?? 42;
+      document.getElementById('val-frequency').innerText = `${(params.frequency_hz ?? 42).toFixed(1)} Hz`;
+
+      document.getElementById('param-spring-max-cc').value = params.air_spring_max_cc.toFixed(1);
+      document.getElementById('param-spring-min-cc').value = params.air_spring_min_cc.toFixed(1);
+
+      document.getElementById('param-cooling-enabled').checked = params.water_cooling_enabled !== false;
+      document.getElementById('param-coolant-flow').value = params.coolant_flow_lpm ?? 4.2;
+      document.getElementById('val-coolant-flow').innerText = `${(params.coolant_flow_lpm ?? 4.2).toFixed(1)} L/min`;
+
+      updateMetricsUI();
+
+    }
+
+
+
+    function recalculateTuning() {
+
+      const combustionFac = params.combustion_pressure_gain / 1.68;
+
+      const genLoadFac = params.generator_rated_force_n / 7058;
+
+      let targetAmp = 19.829 * (combustionFac) / (0.3 + 0.7 * genLoadFac);
+
+      if (targetAmp < 6) targetAmp = 6;
+
+
+
+      currentMetrics.max_bdc_mm = targetAmp;
+
+      currentMetrics.net_efficiency = 0.6346 * (combustionFac / genLoadFac);
+
+      currentMetrics.capture_fraction = targetAmp > 22.0 ? 0.45 : 0.631;
+
+      currentMetrics.peak_pressure_bar = 100.5 * combustionFac;
+
+
+
+      const springSpan = params.air_spring_max_cc - params.air_spring_min_cc;
+      const springBalance = springSpan > 0 ? springSpan / 57.0 : 1.0;
+
+      isStable = targetAmp < 22.0 && params.air_spring_reference_bar > 6.0 && springBalance > 0.85;
+      collisionOccurred = targetAmp >= 22.0;
+
+      const coolingOn = params.water_cooling_enabled !== false;
+      const flow = params.coolant_flow_lpm ?? 4.2;
+      const heatLoad = currentMetrics.peak_pressure_bar * 3.2 + (params.generator_rated_force_n / 7058) * 120;
+      currentMetrics.heat_rejection_w = coolingOn ? 180 + 42 * (heatLoad / 100) * (flow / 4.2) : heatLoad * 0.15;
+      currentMetrics.coolant_temp_c = coolingOn ? 20 + heatLoad / Math.max(flow * 18, 1) : 20 + heatLoad / 8;
+      if (!coolingOn && currentMetrics.coolant_temp_c > 55) {
+        currentMetrics.net_efficiency *= 0.92;
+        isStable = false;
+      }
+
+      updateMetricsUI();
+
+    }
+
+
+
+    function updateMetricsUI() {
+
+      document.getElementById('met-net-eff').innerText = `${(Math.min(currentMetrics.net_efficiency * 100, 98.0)).toFixed(2)}%`;
+
+      document.getElementById('met-cap-frac').innerText = `${(currentMetrics.capture_fraction * 100).toFixed(2)}%`;
+
+      document.getElementById('met-max-bdc').innerText = `${currentMetrics.max_bdc_mm.toFixed(3)} mm`;
+
+      document.getElementById('met-peak-press').innerText = `${currentMetrics.peak_pressure_bar.toFixed(1)} bar`;
+
+      document.getElementById('met-coolant-temp').innerText = `${(currentMetrics.coolant_temp_c ?? 20).toFixed(1)} °C`;
+      document.getElementById('met-heat-reject').innerText = `${Math.round(currentMetrics.heat_rejection_w ?? 0)} W`;
+
+      const b = document.getElementById('stability-badge');
+      const t = document.getElementById('stability-text');
+      const dot = document.getElementById('stability-dot');
+      const warn = document.getElementById('warning-banner');
+
+      if (isStable) {
+        b.className = "px-4 py-1.5 rounded-full font-display text-xs font-bold border bg-emerald-950/20 border-emerald-500/40 text-emerald-400 flex items-center gap-2";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+        t.innerText = "STABLE RES_STEADY";
+        warn.classList.add('hidden');
+      } else {
+        b.className = "px-4 py-1.5 rounded-full font-display text-xs font-bold border bg-red-950/20 border-red-500/40 text-red-400 animate-pulse flex items-center gap-2";
+        dot.className = "w-2.5 h-2.5 rounded-full bg-red-400 animate-pulse";
+        t.innerText = "CRITICAL / UNSTABLE";
+        warn.classList.remove('hidden');
+      }
+
+    }
+
+
+
+    function resizeCanvases() {
+
+      const dpr = window.devicePixelRatio || 1;
+
+      canvas.width = canvas.parentElement.clientWidth * dpr;
+
+      canvas.height = canvas.parentElement.clientHeight * dpr;
+
+      pvCanvas.width = pvCanvas.parentElement.clientWidth * dpr;
+
+      pvCanvas.height = pvCanvas.parentElement.clientHeight * dpr;
+
+      scopeCanvas.width = scopeCanvas.parentElement.clientWidth * dpr;
+      scopeCanvas.height = scopeCanvas.parentElement.clientHeight * dpr;
+
+    }
+
+
+
+    function stepPhysics() {
+      const dt = (1 / 60) * simSpeedMultiplier;
+      const strokeM = currentMetrics.max_bdc_mm / 1000.0;
+
+      if (engineRunning) {
+        cycleAngle = (cycleAngle + 2.0 * Math.PI * params.frequency_hz * dt) % (2.0 * Math.PI);
+      }
+
+      const cycleFrac = cycleAngle / (2.0 * Math.PI);
+      position = 0.006 + strokeM * 0.5 * (1.0 + Math.cos(cycleAngle));
+      const pistonTravelFrac = strokeM > 0 ? (position - 0.006) / strokeM : 0;
+      const atTdc = pistonTravelFrac < 0.08;
+      const atBdc = pistonTravelFrac > 0.92;
+
+      const stage = getCycleStage(cycleFrac);
+      currentCyclePhase = stage;
+
+      sparkActive = stage.spark;
+      isInjecting = stage.inject;
+
+      if (stage.id === "inject") {
+        inCylinderPressure = 1.013 + (currentMetrics.peak_pressure_bar - 1.013) * Math.sin((cycleFrac - 0.48) / 0.02 * Math.PI * 0.5);
+      } else if (stage.id === "power") {
+        inCylinderPressure = currentMetrics.peak_pressure_bar / Math.pow(Math.max(position / 0.012, 1.01), 1.35);
+      } else if (stage.id === "compress") {
+        inCylinderPressure = 1.013 * Math.pow((0.006 + strokeM) / Math.max(position, 0.007), 1.35);
+      } else if (stage.id === "blowdown") {
+        inCylinderPressure = currentMetrics.peak_pressure_bar * 0.35 * (1 - (cycleFrac - 0.88) / 0.04);
+      } else if (stage.intake) {
+        inCylinderPressure = 1.5 - 0.3 * Math.sin(cycleFrac * Math.PI * 4);
+      } else {
+        inCylinderPressure = 1.013 + 0.5 * Math.sin(cycleFrac * Math.PI * 2);
+      }
+
+      val_offset = stage.intake ? 12 * Math.sin(cycleFrac * Math.PI * 6) : 0;
+      ex_offset = stage.exhaust ? 12 * Math.sin(cycleFrac * Math.PI * 6 + 1) : 0;
+
+      const announcer = document.getElementById('stage-announcer');
+      const detail = document.getElementById('stage-detail');
+      announcer.innerText = stage.title;
+      announcer.className = `w-full py-2 rounded border text-xs font-tech text-center font-bold uppercase transition ${stage.col}`;
+      const posLabel = atTdc ? "TDC (min clearance)" : atBdc ? "BDC (max stroke)" : `Stroke ${(pistonTravelFrac * 100).toFixed(0)}%`;
+      detail.innerText = `${stage.detail} | Piston: ${posLabel}`;
+      updateCycleTimeline(stage.id);
+
+      if (engineRunning) coolantAnimPhase += dt * (params.coolant_flow_lpm ?? 4.2) * 0.5;
+
+      const minClr = 1.2;
+      const maxClr = 1.2 + currentMetrics.max_bdc_mm * 1.85;
+      liveClearanceMm = minClr + (maxClr - minClr) * pistonTravelFrac;
+
+      const omega = 2.0 * Math.PI * params.frequency_hz;
+      const velMs = engineRunning
+        ? Math.abs(strokeM * 0.5 * Math.sin(cycleAngle) * omega * simSpeedMultiplier)
+        : 0;
+      liveGenPowerW = 2 * params.generator_rated_force_n * params.generator_force_scale
+        * (params.load_fraction ?? 0.94) * velMs * currentMetrics.net_efficiency;
+
+      updateValveChips(stage);
+      updateLiveTelemetry(cycleFrac, inCylinderPressure, liveClearanceMm, liveGenPowerW, stage);
+
+      if (engineRunning) {
+        pvHistory.push({ v: position * 5000000, p: inCylinderPressure });
+        if (pvHistory.length > 200) pvHistory.shift();
+        waveHistory.push({ p: inCylinderPressure, s: pistonTravelFrac });
+        if (waveHistory.length > 120) waveHistory.shift();
+      }
+      updateAudioHum();
+    }
+
+    function drawClearanceGauge(ctx, leftX, rightX, clearanceMm) {
+      const y = 250;
+      const gap = rightX - leftX;
+      if (gap < 8) return;
+      ctx.save();
+      ctx.strokeStyle = atTdcHighlight(clearanceMm) ? '#fbbf24' : 'rgba(148,163,184,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(leftX, y - 20); ctx.lineTo(rightX, y - 20);
+      ctx.moveTo(leftX, y + 20); ctx.lineTo(rightX, y + 20);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(251,191,36,0.85)';
+      ctx.font = "9px 'Share Tech Mono'";
+      ctx.textAlign = 'center';
+      ctx.fillText(`${clearanceMm.toFixed(1)} mm`, (leftX + rightX) / 2, y - 26);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    function atTdcHighlight(clearanceMm) {
+      return clearanceMm < 2.5;
+    }
+
+    function drawCrankDial(ctx, cycleFrac) {
+      const cx = 72, cy = 428, r = 22;
+      ctx.save();
+      ctx.fillStyle = 'rgba(15,23,42,0.85)';
+      ctx.strokeStyle = 'rgba(100,116,139,0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      const angle = cycleFrac * Math.PI * 2 - Math.PI / 2;
+      ctx.strokeStyle = '#a78bfa';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angle) * (r - 4), cy + Math.sin(angle) * (r - 4));
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(167,139,250,0.9)';
+      ctx.font = "8px 'Share Tech Mono'";
+      ctx.textAlign = 'center';
+      ctx.fillText('CRANK', cx, cy + r + 10);
+      ctx.fillText(`${(cycleFrac * 100).toFixed(0)}%`, cx, cy + 4);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    }
+
+    function drawScopeChart() {
+      scopeCtx.clearRect(0, 0, scopeCanvas.width, scopeCanvas.height);
+      const w = scopeCanvas.width, h = scopeCanvas.height;
+      const pad = 14;
+      scopeCtx.strokeStyle = 'rgba(55,65,81,0.5)';
+      scopeCtx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = pad + (h - 2 * pad) * i / 4;
+        scopeCtx.beginPath(); scopeCtx.moveTo(pad, y); scopeCtx.lineTo(w - pad, y); scopeCtx.stroke();
+      }
+      if (waveHistory.length < 2) return;
+      const maxP = Math.max(...waveHistory.map(pt => pt.p), 10);
+      const drawLine = (key, color, maxVal) => {
+        scopeCtx.strokeStyle = color;
+        scopeCtx.lineWidth = 1.5;
+        scopeCtx.beginPath();
+        for (let i = 0; i < waveHistory.length; i++) {
+          const x = pad + (i / 119) * (w - 2 * pad);
+          const y = h - pad - (waveHistory[i][key] / maxVal) * (h - 2 * pad);
+          if (i === 0) scopeCtx.moveTo(x, y); else scopeCtx.lineTo(x, y);
+        }
+        scopeCtx.stroke();
+      };
+      drawLine('p', '#fb923c', maxP);
+      drawLine('s', '#22d3ee', 1);
+    }
+
+    function drawPvLoop() {
+      pvCtx.clearRect(0, 0, pvCanvas.width, pvCanvas.height);
+      const w = pvCanvas.width, h = pvCanvas.height;
+      const pad = 18;
+      pvCtx.strokeStyle = 'rgba(55,65,81,0.4)';
+      pvCtx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const x = pad + (w - 2 * pad) * i / 4;
+        const y = pad + (h - 2 * pad) * i / 4;
+        pvCtx.beginPath(); pvCtx.moveTo(x, pad); pvCtx.lineTo(x, h - pad); pvCtx.stroke();
+        pvCtx.beginPath(); pvCtx.moveTo(pad, y); pvCtx.lineTo(w - pad, y); pvCtx.stroke();
+      }
+      if (pvHistory.length < 2) return;
+      const maxV = Math.max(...pvHistory.map(pt => pt.v), 1);
+      const maxP = Math.max(...pvHistory.map(pt => pt.p), 1);
+      pvCtx.strokeStyle = '#38bdf8';
+      pvCtx.lineWidth = 2;
+      pvCtx.beginPath();
+      for (let i = 0; i < pvHistory.length; i++) {
+        const x = pad + (pvHistory[i].v / maxV) * (w - 2 * pad);
+        const y = h - pad - (pvHistory[i].p / maxP) * (h - 2 * pad);
+        if (i === 0) pvCtx.moveTo(x, y); else pvCtx.lineTo(x, y);
+      }
+      pvCtx.stroke();
+      const fontSize = Math.max(9, w * 0.035);
+      pvCtx.fillStyle = 'rgba(148, 163, 184, 0.6)';
+      pvCtx.font = `${fontSize}px 'Share Tech Mono', monospace`;
+      pvCtx.fillText('P (bar)', 4, 14);
+      pvCtx.fillText('V', w - 14, h - 6);
+      pvCtx.fillStyle = 'rgba(56,189,248,0.5)';
+      pvCtx.fillText(`${maxP.toFixed(0)} bar`, w - 52, 14);
+    }
+
+
+
+    function drawWaterCooling(ctx) {
+      if (params.water_cooling_enabled === false) return;
+      const flow = (params.coolant_flow_lpm ?? 4.2) / 10;
+      const alpha = 0.25 + flow * 0.45;
+
+      ctx.save();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = `rgba(14, 165, 233, ${alpha})`;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.moveTo(310, 155); ctx.lineTo(305, 145); ctx.lineTo(695, 145); ctx.lineTo(690, 155);
+      ctx.moveTo(310, 348); ctx.lineTo(305, 358); ctx.lineTo(695, 358); ctx.lineTo(690, 348);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = `rgba(56, 189, 248, ${alpha * 0.8})`;
+      ctx.beginPath();
+      ctx.moveTo(210, 250); ctx.lineTo(255, 250); ctx.moveTo(745, 250); ctx.lineTo(790, 250);
+      ctx.stroke();
+
+      const anim = coolantAnimPhase % 1;
+      ctx.fillStyle = `rgba(125, 211, 252, ${0.5 + flow * 0.4})`;
+      for (let i = 0; i < 4; i++) {
+        const t = (anim + i * 0.25) % 1;
+        ctx.beginPath(); ctx.arc(305 + t * 390, 145, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(690 - t * 385, 358, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(210 + t * 45, 248, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(745 + t * 45, 252, 2.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawGasFlows(ctx, stage) {
+      if (stage.intake && val_offset > 0.5) {
+        ctx.fillStyle = "rgba(14, 165, 233, 0.65)";
+        for (let i = 0; i < 5; i++) {
+          const px = 385 + (Math.random() - 0.5) * 16;
+          const py = 115 + Math.random() * 40;
+          ctx.beginPath(); ctx.arc(px, py, 2 + Math.random(), 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(615 + (Math.random() - 0.5) * 16, py, 2 + Math.random(), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
+        ctx.font = "9px 'Share Tech Mono'";
+        ctx.fillText("O₂ + N₂ intake", 368, 95);
+      }
+      if (stage.inject && isInjecting) {
+        ctx.fillStyle = "rgba(250, 204, 21, 0.7)";
+        for (let i = 0; i < 4; i++) {
+          ctx.beginPath(); ctx.arc(500 + (Math.random() - 0.5) * 20, 175 + Math.random() * 35, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = "rgba(251, 191, 36, 0.5)";
+        ctx.fillText("C₈H₁₈ spray", 468, 175);
+      }
+      if (stage.id === "compress") {
+        ctx.strokeStyle = "rgba(167, 139, 250, 0.35)";
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath(); ctx.arc(500, 250, 30 + i * 18, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+      if (stage.exhaust && ex_offset > 0.5) {
+        ctx.fillStyle = "rgba(249, 115, 22, 0.55)";
+        for (let i = 0; i < 5; i++) {
+          ctx.beginPath(); ctx.arc(385 + (Math.random() - 0.5) * 16, 350 + Math.random() * 35, 2.5, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(615 + (Math.random() - 0.5) * 16, 350 + Math.random() * 35, 2.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = "rgba(251, 146, 60, 0.45)";
+        ctx.fillText("CO₂ + H₂O exhaust", 355, 375);
+      }
+    }
+
+    function hexToRgba(hex, alpha) {
+      const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function drawComponentHighlights(ctx) {
+      const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 180);
+      const targets = new Set();
+      if (selectedCompId) targets.add(selectedCompId);
+      if (hoveredCompId && hoveredCompId !== selectedCompId) targets.add(hoveredCompId);
+
+      comps.forEach(c => {
+        if (!targets.has(c.id)) return;
+        const isSel = c.id === selectedCompId;
+        const pad = isSel ? 6 : 4;
+        const regions = getCompRegions(c);
+
+        regions.forEach(b => {
+          ctx.save();
+          if (isSel) {
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 14 * pulse;
+            ctx.strokeRect(b.x - pad - 2, b.y - pad - 2, b.w + (pad + 2) * 2, b.h + (pad + 2) * 2);
+          }
+          ctx.strokeStyle = c.color;
+          ctx.lineWidth = isSel ? 3 : 2;
+          ctx.shadowColor = c.color;
+          ctx.shadowBlur = (isSel ? 22 : 12) * pulse;
+          ctx.setLineDash(isSel ? [] : [5, 4]);
+          ctx.strokeRect(b.x - pad, b.y - pad, b.w + pad * 2, b.h + pad * 2);
+          if (isSel) {
+            ctx.fillStyle = hexToRgba(c.color, 0.22);
+            ctx.fillRect(b.x - pad, b.y - pad, b.w + pad * 2, b.h + pad * 2);
+          }
+          ctx.restore();
+        });
+
+        if (isSel) {
+          const b = c.bounds;
+          ctx.save();
+          ctx.fillStyle = c.color;
+          ctx.font = "bold 10px 'Share Tech Mono'";
+          ctx.shadowBlur = 0;
+          ctx.fillText(`[${c.id}] ${c.name}`, b.x, Math.max(b.y - 8, 12));
+          ctx.restore();
+        }
+      });
+    }
+
+    function drawMagBearings(ctx) {
+      const drawSide = (x, compId) => {
+        const active = selectedCompId === compId || hoveredCompId === compId;
+        ctx.fillStyle = active ? "rgba(6, 182, 212, 0.4)" : "rgba(6, 182, 212, 0.18)";
+        ctx.strokeStyle = active ? "#67e8f9" : "rgba(6, 182, 212, 0.85)";
+        ctx.lineWidth = active ? 2.5 : 1.5;
+        ctx.fillRect(x, 210, 20, 30); ctx.strokeRect(x, 210, 20, 30);
+        ctx.fillRect(x, 260, 20, 30); ctx.strokeRect(x, 260, 20, 30);
+      };
+      drawSide(260, "7a");
+      drawSide(720, "7b");
+    }
+
+    function draw() {
+
+      stepPhysics();
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+
+      ctx.scale(canvas.width / 1000, canvas.height / 500);
+
+
+
+      // Casing Outer body shell
+
+      ctx.lineWidth = 3;
+
+      ctx.strokeStyle = collisionOccurred ? "#ef4444" : "#475569";
+
+      ctx.fillStyle = "#0f172a";
+
+      ctx.beginPath(); ctx.rect(50, 160, 900, 180); ctx.fill(); ctx.stroke();
+
+
+
+      const maxPosM = 0.006 + currentMetrics.max_bdc_mm / 1000.0;
+      const strokeFac = (position - 0.006) / Math.max(maxPosM - 0.006, 1e-6);
+      const offset = Math.min(Math.max(strokeFac, 0), 1) * 135;
+
+
+
+      const leftPistonX = 370 - offset;
+
+      const rightPistonX = 630 + offset;
+
+      const pistonW = 50, pistonH = 84;
+
+// 1. Manifold Channels & Gas Flow animations
+
+      ctx.fillStyle = "#1e293b"; ctx.fillRect(360, 100, 40, 60); ctx.fillRect(600, 100, 40, 60); // Intakes
+
+      ctx.fillRect(360, 340, 40, 60); ctx.fillRect(600, 340, 40, 60); // Exhausts
+
+      // Hourglass Cylinder Liner
+
+      ctx.strokeStyle = "rgba(100,116,139,0.5)"; ctx.beginPath();
+
+      ctx.moveTo(320, 160); ctx.bezierCurveTo(430, 185, 430, 315, 320, 340);
+
+      ctx.lineTo(680, 340); ctx.bezierCurveTo(570, 315, 570, 185, 680, 160);
+
+      ctx.closePath(); ctx.stroke();
+
+      drawWaterCooling(ctx);
+
+      // Symmetrical Combustion Glow
+
+      const glow = Math.min(1.0, inCylinderPressure/100);
+
+      if (glow > 0.05) {
+
+        let grad = ctx.createRadialGradient(500, 250, 5, 500, 250, 140);
+
+        grad.addColorStop(0, `rgba(255,255,255,${glow})`);
+
+        grad.addColorStop(0.3, `rgba(249,115,22,${glow*0.8})`);
+
+        grad.addColorStop(1, "rgba(0,0,0,0)");
+
+        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(500, 250, 150, 0, Math.PI*2); ctx.fill();
+
+      }
+
+
+
+      // 2. Hardware: Injector (1) & Spark Plug (2)
+
+      ctx.fillStyle = "#64748b"; ctx.fillRect(491, 100, 18, 60); // Solenoid Injector
+
+      ctx.fillStyle = "#cbd5e1"; ctx.fillRect(494, 340, 12, 40); // Spark Plug Insulator
+
+      
+
+      if (isInjecting) {
+
+        ctx.fillStyle = "rgba(56, 189, 248, 0.85)"; ctx.beginPath();
+
+        ctx.moveTo(500, 160); ctx.lineTo(485, 210); ctx.lineTo(515, 210); ctx.closePath(); ctx.fill();
+
+      }
+
+      if (sparkActive) {
+
+        ctx.strokeStyle = "#a5f3fc"; ctx.lineWidth = 3; ctx.beginPath();
+
+        ctx.moveTo(500, 335); ctx.lineTo(495+Math.random()*10, 250); ctx.lineTo(500, 180); ctx.stroke();
+
+      }
+
+
+
+      // 3. Intake / Exhaust physical valves (Synchronous sliding heads)
+
+      ctx.fillStyle = "#94a3b8"; ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 1.5;
+
+      ctx.fillRect(377, 100 + val_offset, 6, 60); ctx.fillRect(362, 155 + val_offset, 36, 6); // Intake A
+
+      ctx.fillRect(617, 100 + val_offset, 6, 60); ctx.fillRect(602, 155 + val_offset, 36, 6); // Intake B
+
+      
+
+      ctx.fillStyle = "#475569"; ctx.strokeStyle = "#f97316";
+
+      ctx.fillRect(377, 340 + ex_offset, 6, 60); ctx.fillRect(362, 338 + ex_offset, 36, 6); // Exhaust A
+
+      ctx.fillRect(617, 340 + ex_offset, 6, 60); ctx.fillRect(602, 338 + ex_offset, 36, 6); // Exhaust B
+
+
+
+      // 4. Opposed Piston Heads assembly
+
+      ctx.fillStyle = "rgba(59, 130, 246, 0.9)"; ctx.strokeStyle = "#60a5fa"; ctx.lineWidth = 2.5;
+
+      ctx.beginPath(); ctx.moveTo(leftPistonX, 250 - pistonH/2);
+
+      ctx.quadraticCurveTo(leftPistonX - 10, 250, leftPistonX, 250 + pistonH/2);
+
+      ctx.lineTo(leftPistonX - pistonW, 250 + pistonH/2); ctx.lineTo(leftPistonX - pistonW, 250 - pistonH/2);
+
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+
+
+
+      ctx.beginPath(); ctx.moveTo(rightPistonX, 250 - pistonH/2);
+
+      ctx.quadraticCurveTo(rightPistonX + 10, 250, rightPistonX, 250 + pistonH/2);
+
+      ctx.lineTo(rightPistonX + pistonW, 250 + pistonH/2); ctx.lineTo(rightPistonX + pistonW, 250 - pistonH/2);
+
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+
+      drawClearanceGauge(ctx, leftPistonX, rightPistonX, liveClearanceMm);
+
+      // Piston Drive Shafts with detailed Magnetic Poles (Red/Blue North/South)
+
+      const shaftL = 250, shaftH = 40;
+
+      ctx.fillStyle = "#475569"; ctx.strokeStyle = "#94a3b8";
+
+      ctx.fillRect(leftPistonX - pistonW - shaftL, 250 - shaftH/2, shaftL, shaftH);
+
+      ctx.strokeRect(leftPistonX - pistonW - shaftL, 250 - shaftH/2, shaftL, shaftH);
+
+      ctx.fillRect(rightPistonX + pistonW, 250 - shaftH/2, shaftL, shaftH);
+
+      ctx.strokeRect(rightPistonX + pistonW, 250 - shaftH/2, shaftL, shaftH);
+
+
+
+      const poles = 8, poleW = shaftL/poles;
+
+      for (let m=0; m<poles; m++) {
+
+        ctx.fillStyle = m%2===0 ? "rgba(239,68,68,0.7)" : "rgba(59,130,246,0.7)";
+
+        ctx.fillRect(leftPistonX - pistonW - shaftL + (m*poleW) + 2, 250 - shaftH/2 + 2, poleW - 4, shaftH - 4);
+
+        ctx.fillRect(rightPistonX + pistonW + (m*poleW) + 2, 250 - shaftH/2 + 2, poleW - 4, shaftH - 4);
+
+      }
+
+
+
+      // Linear Generators
+
+      ctx.fillStyle = "rgba(16, 185, 129, 0.15)"; ctx.strokeStyle = "#10b981"; ctx.lineWidth = 3;
+
+      ctx.fillRect(100, 200, 110, 40); ctx.strokeRect(100, 200, 110, 40);
+
+      ctx.fillRect(100, 260, 110, 40); ctx.strokeRect(100, 260, 110, 40);
+
+      ctx.fillRect(790, 200, 110, 40); ctx.strokeRect(790, 200, 110, 40);
+
+      ctx.fillRect(790, 260, 110, 40); ctx.strokeRect(790, 260, 110, 40);
+
+
+
+      // Active Magnetic Bearings (dual ring coils per side)
+      drawMagBearings(ctx);
+
+      // Air Springs (Varying color gradient under pressure)
+
+      const springGlow = Math.min(0.85, (0.045 - position)/0.02);
+
+      ctx.fillStyle = `rgba(139, 92, 246, ${springGlow * 0.4})`;
+
+      ctx.strokeStyle = "rgba(139, 92, 246, 0.75)";
+
+      ctx.fillRect(50, 215, 50, 70); ctx.strokeRect(50, 215, 50, 70);
+
+      ctx.fillRect(900, 215, 50, 70); ctx.strokeRect(900, 215, 50, 70);
+
+
+
+      // Position Sensors
+
+      ctx.fillStyle = "#cbd5e1"; ctx.strokeStyle = "#f59e0b";
+
+      ctx.fillRect(75, 345, 15, 15); ctx.strokeRect(75, 345, 15, 15);
+
+      ctx.fillRect(910, 345, 15, 15); ctx.strokeRect(910, 345, 15, 15);
+
+      if (currentCyclePhase) drawGasFlows(ctx, currentCyclePhase);
+
+      drawCrankDial(ctx, cycleAngle / (2.0 * Math.PI));
+
+      drawComponentHighlights(ctx);
+
+      ctx.restore();
+
+      drawPvLoop();
+      drawScopeChart();
+
+      if (soundEnabled) updateAudioHum();
+
+      requestAnimationFrame(draw);
+
+    }
+
+
+
+    window.onload = function() { initUI(); draw(); };
+
+  </script>
+
+</body>
+
+</html>

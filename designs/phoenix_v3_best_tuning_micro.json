@@ -1,0 +1,46 @@
+{
+  "score": 0.6953582307084255,
+  "stable": true,
+  "tier": "micro",
+  "total_displacement_cc": 100.0,
+  "displacement_per_side_cc": 50.0,
+  "metrics": {
+    "net_efficiency": 0.521236129566976,
+    "capture_fraction": 0.5544482111399742,
+    "max_bdc_mm": 17.33403185876587,
+    "elec_energy_j": 455.560377241537,
+    "peak_pressure_bar": 187.5909924498896,
+    "spring_recovery": 0.95,
+    "ke_power_fraction": 0.040435992191682466,
+    "unharvested_fraction": 0.01739065506241468
+  },
+  "parameters": {
+    "generator_force_scale": 2.4937807203085267,
+    "generator_rated_force_n": 4568.667872,
+    "generator_spring_decouple": 0.145266,
+    "air_spring_reference_bar": 13.360479,
+    "air_spring_max_cc": 50.864082,
+    "air_spring_min_cc": 11.682048,
+    "air_spring_expansion_gain": 0.55,
+    "air_spring_compression_gain": 1.294118,
+    "generator_adaptive_profile": 0.171931,
+    "exhaust_open_ms": 8.717937,
+    "load_fraction": 0.95,
+    "frequency_hz": 60.776557,
+    "combustion_pressure_gain": 1.481692,
+    "burn_duration_ms": 2.1286562452063453,
+    "damping_n_s_m": 26.376704,
+    "ignition_ms": 4.6,
+    "compression_ratio": 13.5
+  },
+  "corpus_size": 35000,
+  "search_version": "v3",
+  "physics_note": "Metrics from validate_best_for_export() on current V3 physics; not legacy corpus scores.",
+  "ring_validation": {
+    "ring_efficiency": 0.5212024755173809,
+    "ring_gap_pp": 3.365404959509988e-05,
+    "ring_valid": true,
+    "physics_validated": true,
+    "actuator_mode": false
+  }
+}

@@ -1,8 +1,9 @@
 """Bridge Phoenix V3 cartridge physics into the vehicle digital twin.
 
-Loads ``phoenix_v3_best_tuning_v3.json`` (falls back to v2/v1), runs the opposed-
-piston simulator at a load point, and returns fuel-to-electrical metrics for ATPE
-tier calibration and Gate 1 rig specification.
+Per-tier tuning files (opposed piston total swept volume):
+  micro  — 100 cc  (50 cc/side)  -> phoenix_v3_best_tuning_micro.json
+  medium — 300 cc (150 cc/side)  -> phoenix_v3_best_tuning_v3.json
+  large  — 750 cc (375 cc/side)  -> phoenix_v3_best_tuning_large.json
 """
 
 from __future__ import annotations
@@ -12,14 +13,21 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
+from designs.phoenix_v3.tier_presets import load_tier_tuning_config
+from designs.phoenix_v3.tier_profiles import (
+    LEGACY_BEST_TUNING_CANDIDATES,
+    profile_for_tier_index,
+    resolve_tier_tuning_path,
+)
+
 _REPO = Path(__file__).resolve().parents[1]
 _DESIGNS = _REPO / "designs"
 
-BEST_TUNING_CANDIDATES: tuple[Path, ...] = (
-    _DESIGNS / "phoenix_v3_best_tuning_v3.json",
-    _DESIGNS / "phoenix_v3_best_tuning_v2.json",
-    _DESIGNS / "phoenix_v3_best_tuning.json",
+BEST_TUNING_CANDIDATES: tuple[Path, ...] = tuple(
+    _DESIGNS / name for name in LEGACY_BEST_TUNING_CANDIDATES
 )
+
+DEFAULT_V3_LOAD_FRACTIONS: tuple[float, ...] = (0.15, 0.35, 0.55, 0.75, 0.90, 1.0)
 
 
 @dataclass(frozen=True)
@@ -73,13 +81,8 @@ class Gate1RigSpec:
 
 
 def resolve_best_tuning_path(explicit: Path | str | None = None) -> Path | None:
-    if explicit is not None:
-        path = Path(explicit)
-        return path if path.is_file() else None
-    for candidate in BEST_TUNING_CANDIDATES:
-        if candidate.is_file():
-            return candidate
-    return None
+    """Resolve medium-tier (300 cc) best tuning — legacy helper."""
+    return resolve_tier_tuning_path(1, explicit)
 
 
 def load_phoenix_v3_config(
@@ -87,22 +90,14 @@ def load_phoenix_v3_config(
     *,
     load_fraction: float | None = None,
     cooling_mode: str = "water_jacket",
+    tier_index: int = 1,
 ):
-    """Load best-tuning JSON into a ``PhoenixV3Config``."""
-    from designs.phoenix_v3_optimizer import TuningVector
-    from designs.phoenix_v3_simulation import (
-        PhoenixV3Config,
-        apply_generator_cooling,
-    )
+    """Load tier-native geometry + best-tuning JSON into a ``PhoenixV3Config``."""
+    from designs.phoenix_v3_simulation import apply_generator_cooling
 
-    path = resolve_best_tuning_path(tuning_path)
-    if path is None:
-        cfg = PhoenixV3Config()
-    else:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        cfg = TuningVector.from_dict(payload["parameters"]).to_config(PhoenixV3Config())
-    if load_fraction is not None:
-        cfg = replace(cfg, load_fraction=load_fraction)
+    cfg, path = load_tier_tuning_config(
+        tier_index, tuning_path, load_fraction=load_fraction,
+    )
     return apply_generator_cooling(cfg, cooling_mode), path
 
 
@@ -112,6 +107,7 @@ def measure_v3_cartridge(
     load_fraction: float | None = None,
     cycles: int = 24,
     tuning_path: Path | str | None = None,
+    tier_index: int = 1,
 ) -> PhoenixV3CartridgeMetrics:
     """Run V3 sim and return late-window harvest metrics."""
     from designs.phoenix_v3_simulation import (
@@ -121,7 +117,9 @@ def measure_v3_cartridge(
     )
 
     if cfg is None:
-        cfg, _ = load_phoenix_v3_config(tuning_path, load_fraction=load_fraction)
+        cfg, _ = load_tier_tuning_config(
+            tier_index, tuning_path, load_fraction=load_fraction,
+        )
     elif load_fraction is not None:
         cfg = replace(cfg, load_fraction=load_fraction)
 
@@ -176,12 +174,15 @@ def measure_v3_ring(
     cycles: int = 60,
     tuning_path: Path | str | None = None,
     cooling_mode: str = "water_jacket",
+    tier_index: int = 1,
 ) -> PhoenixV3RingMetrics:
     """Validate ring phasing with shared coolant."""
     from designs.phoenix_v3_ring import RingConfig, simulate_ring
 
     if cfg is None:
-        cfg, _ = load_phoenix_v3_config(tuning_path, cooling_mode=cooling_mode)
+        cfg, _ = load_phoenix_v3_config(
+            tuning_path, cooling_mode=cooling_mode, tier_index=tier_index,
+        )
 
     result = simulate_ring(
         cfg,
@@ -203,26 +204,114 @@ def measure_v3_ring(
     )
 
 
-def phoenix_v3_gate1_point(
-    load_fraction: float,
+def calibrate_v3_tier(
+    tier_index: int,
     *,
     tuning_path: Path | str | None = None,
     cycles: int = 16,
+    load_fractions: tuple[float, ...] = DEFAULT_V3_LOAD_FRACTIONS,
+) -> "V3TierCalibration":
+    """Run Phoenix V3 at multiple loads for one ATPE tier geometry."""
+    from .config import V3TierCalibration, V3TierCalibrationPoint
+
+    profile = profile_for_tier_index(tier_index)
+    tier_path = resolve_tier_tuning_path(tier_index, tuning_path)
+    points: list[V3TierCalibrationPoint] = []
+    for load_frac in load_fractions:
+        metrics = measure_v3_cartridge(
+            load_fraction=load_frac,
+            cycles=cycles,
+            tuning_path=tier_path,
+            tier_index=profile.tier_index,
+        )
+        points.append(
+            V3TierCalibrationPoint(
+                load_frac=load_frac,
+                net_efficiency=max(0.10, min(metrics.net_efficiency, 0.58)),
+                elec_power_w=metrics.elec_power_w,
+                peak_pressure_bar=metrics.peak_pressure_bar,
+                energy_balance_valid=metrics.energy_balance_valid,
+            )
+        )
+    derivation = "phoenix_v3_sim"
+    if tier_path is not None:
+        try:
+            meta = json.loads(tier_path.read_text(encoding="utf-8"))
+            derivation = str(meta.get("tier", derivation)) + "_tuning"
+        except (json.JSONDecodeError, OSError):
+            pass
+    return V3TierCalibration(
+        tier_index=profile.tier_index,
+        tier_name=profile.name,
+        displacement_cc=profile.total_displacement_cc,
+        points=tuple(points),
+        derivation=derivation,
+    )
+
+
+def calibrate_all_v3_tiers(
+    *,
+    tuning_path: Path | str | None = None,
+    cycles: int = 16,
+    load_fractions: tuple[float, ...] = DEFAULT_V3_LOAD_FRACTIONS,
+    tier_count: int = 3,
+) -> tuple["V3TierCalibration", ...]:
+    """Build per-tier V3 efficiency maps (each tier uses its own tuning file)."""
+    n = max(1, min(tier_count, 3))
+    return tuple(
+        calibrate_v3_tier(
+            i,
+            tuning_path=tuning_path,
+            cycles=cycles,
+            load_fractions=load_fractions,
+        )
+        for i in range(n)
+    )
+
+
+def _tier_curve_lookup(tier_index: int, tier_curves: tuple) -> object | None:
+    for curve in tier_curves:
+        if curve.tier_index == tier_index:
+            return curve
+    if tier_curves:
+        return tier_curves[min(tier_index, len(tier_curves) - 1)]
+    return None
+
+
+def phoenix_v3_gate1_point(
+    load_fraction: float,
+    *,
+    tier_index: int = 1,
+    tuning_path: Path | str | None = None,
+    cycles: int = 16,
+    tier_curves: tuple = (),
     generator_efficiency: float = 0.94,
 ):
     """Map load fraction to a Gate1Point for ATPE tier efficiency lookup."""
     from .single_cylinder import Gate1Point
 
+    curve = _tier_curve_lookup(tier_index, tier_curves)
+    if curve is not None and curve.points:
+        sweet = max(curve.points, key=lambda p: p.net_efficiency)
+        eta = max(0.10, min(curve.efficiency_at(load_fraction), 0.58))
+        return Gate1Point(
+            electric_efficiency=eta,
+            imep_bar=sweet.peak_pressure_bar * 0.04,
+            knock_index=0.0,
+            peak_pressure_bar=sweet.peak_pressure_bar,
+            predicted_tdc_mm=20.0,
+        )
+
     metrics = measure_v3_cartridge(
         load_fraction=load_fraction,
         cycles=cycles,
         tuning_path=tuning_path,
+        tier_index=tier_index,
     )
     eta = max(0.10, min(metrics.net_efficiency, 0.58))
-    imep = metrics.peak_pressure_bar * 0.04
     return Gate1Point(
         electric_efficiency=eta,
-        imep_bar=imep,
+        imep_bar=metrics.peak_pressure_bar * 0.04,
         knock_index=0.0,
         peak_pressure_bar=metrics.peak_pressure_bar,
         predicted_tdc_mm=metrics.stroke_mm * 0.5,
@@ -234,10 +323,11 @@ def build_gate1_rig_spec(
     *,
     cycles: int = 24,
     ring_cycles: int = 60,
+    tier_index: int = 1,
 ) -> Gate1RigSpec:
     """Derive Gate 1 lab-rig targets from validated V3 physics."""
-    path = resolve_best_tuning_path(tuning_path)
-    cfg, _ = load_phoenix_v3_config(path)
+    path = resolve_tier_tuning_path(tier_index, tuning_path)
+    cfg, _ = load_phoenix_v3_config(path, tier_index=tier_index)
     sweet = measure_v3_cartridge(cfg, cycles=cycles)
     ring = measure_v3_ring(cfg, cycles=ring_cycles)
     hw_lo = max(0.30, sweet.net_efficiency - 0.18)
@@ -266,9 +356,10 @@ def export_gate1_rig_dossier(
     out_dir: Path | None = None,
     *,
     tuning_path: Path | str | None = None,
+    tier_index: int = 1,
 ) -> Path:
     """Write Gate 1 rig specification markdown + JSON to evidence pack."""
-    spec = build_gate1_rig_spec(tuning_path)
+    spec = build_gate1_rig_spec(tuning_path, tier_index=tier_index)
     out = out_dir or (_REPO / "docs" / "evidence-pack")
     out.mkdir(parents=True, exist_ok=True)
 
@@ -300,20 +391,6 @@ def export_gate1_rig_dossier(
                     "net_efficiency_max": spec.net_efficiency_hardware_band[1],
                 },
                 "long_run_cooling": spec.cooling_mode_long_run,
-                "instrumentation_minimum": [
-                    "cylinder_pressure_50khz",
-                    "piston_position_x2_10khz",
-                    "fuel_flow",
-                    "dc_bus_power_analyzer",
-                    "exhaust_egt",
-                    "generator_winding_temp",
-                ],
-                "acceptance_first_rig": {
-                    "stable_cycles_min": 100,
-                    "gate1_checks_min": 5,
-                    "stroke_tolerance_mm": 2.0,
-                    "efficiency_vs_sim_pp": 12.0,
-                },
             },
             indent=2,
         ),
@@ -327,48 +404,8 @@ def export_gate1_rig_dossier(
             "",
             f"*Generated: {spec.validated_utc} · tuning: `{spec.tuning_source}`*",
             "",
-            "## Cartridge geometry (Rig β / γ)",
-            "",
-            f"| Parameter | Target |",
-            f"|-----------|--------|",
-            f"| Bore | {spec.bore_mm:.1f} mm |",
-            f"| Peak-to-peak stroke | {spec.stroke_mm:.1f} mm |",
-            f"| Operating frequency | {spec.frequency_hz:.1f} Hz ({spec.cycle_time_ms:.1f} ms/cycle) |",
-            f"| Peak chamber pressure | ≤ {spec.peak_pressure_bar:.0f} bar (sim) |",
-            f"| Generator rated force | {spec.generator_rated_force_n:.0f} N per piston |",
-            f"| Capture lockout BDC | ≥ {spec.capture_min_bdc_mm:.0f} mm before full extraction |",
-            "",
-            "## Performance targets",
-            "",
-            f"| Metric | Simulation | Hardware expectation |",
-            f"|--------|------------|---------------------|",
-            f"| Fuel → electrical η | **{spec.net_efficiency_sim:.1%}** | "
-            f"{spec.net_efficiency_hardware_band[0]:.0%}–{spec.net_efficiency_hardware_band[1]:.0%} |",
-            f"| Generator capture | {spec.capture_fraction:.1%} of power-stroke expansion | — |",
-            f"| Electrical power (1 cart) | {spec.elec_power_w_per_cartridge/1000:.1f} kW | scale to achieved load |",
-            f"| Ring power (12×, sim) | {spec.ring_power_w_12x/1000:.0f} kW | Gate 4 scope |",
-            "",
-            "## Cooling",
-            "",
-            f"Long-run thermal sustainability at ~54% output requires **`{spec.cooling_mode_long_run}`** "
-            f"in simulation. Passive cooling fails within minutes at this output level.",
-            "",
-            "## First-rig acceptance (maps to virtual 48-cell matrix)",
-            "",
-            "- ≥ **100** consecutive stable cycles without runaway amplitude",
-            "- ≥ **5/6** Gate 1 bench checks at sweet spot (`load_fraction` ≈ "
-            f"{spec.load_fraction_sweet_spot:.2f})",
-            "- Measured η within **12 percentage points** of sim band on first build",
-            "- Log CSV per §7 of [GATE1-LAB-RIG-DESIGN.md](../GATE1-LAB-RIG-DESIGN.md)",
-            "",
-            "## Instrumentation minimum",
-            "",
-            "1. Cylinder pressure (piezo, ≥50 kHz)",
-            "2. Piston position ×2 (LVDT, ≥10 kHz)",
-            "3. Fuel mass flow",
-            "4. DC bus V/I or power analyser",
-            "5. Exhaust gas temperature",
-            "6. Generator winding / coolant temperature",
+            f"| Fuel -> electrical eta | **{spec.net_efficiency_sim:.1%}** |",
+            f"| Electrical power (1 cart) | {spec.elec_power_w_per_cartridge/1000:.1f} kW |",
             "",
             f"Machine-readable spec: `{json_path.name}`",
             "",

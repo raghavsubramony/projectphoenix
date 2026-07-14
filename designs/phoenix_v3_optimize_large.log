@@ -1,0 +1,79 @@
+=== Phoenix V3 tier batch: Tier 3 (large) (750 cc) ===
+trials=25000 workers=12 cycles=8 seed=44 resume=False
+frequency_hz search: 26.2-50.8
+corpus: phoenix_v3_tuning_corpus_large.csv
+export: phoenix_v3_best_tuning_large.json
+
+========================================================================
+PHOENIX V3 — AUTOMATED TUNING RESULT (v2 search space)
+========================================================================
+  New trials this run:  25000
+  Total corpus size:   25000
+  Elapsed:             2422.7 s
+  Corpus path:         C:\Users\c52444a\Desktop\project Phoenix\designs\phoenix_v3_tuning_corpus_large.csv
+
+  Best STABLE config by harvest score:
+    Net fuel-to-electric: 54.3%  (target > 40%)
+    Harvest score:        0.7283
+    Generator capture:    59.8%
+    BDC travel:           13.1 mm
+    Electrical/cycle:     449.2 J
+    Spring recovery:      95.0%
+    Power-stroke KE:      0.0% of expansion
+    Unharvested (power):  2.7% of expansion
+    Eelec / Espring:      1.53
+    Peak pressure:        47 bar
+    RGF / scavenging:     0.0% / 100.0%
+    Stable / balanced:    True / True
+
+  Recommended parameters:
+    generator_force_scale           3.000
+    generator_rated_force_n          6990
+    generator_spring_decouple       0.083
+    air_spring_reference_bar       10.000
+    air_spring_max_cc                75.2
+    air_spring_min_cc                23.6
+    air_spring_expansion_gain       0.579
+    air_spring_compression_gain     1.092
+    generator_adaptive_profile      0.987
+    exhaust_open_ms                  8.50
+    load_fraction                   0.950
+    frequency_hz                     69.0
+    combustion_pressure_gain        1.567
+    burn_duration_ms                 1.64
+    damping_n_s_m                  37.445
+    ignition_ms                      3.83
+    compression_ratio              14.500
+
+  Top 5 by harvest score (stable preferred):
+  Rank    Enet    Score    Cap%    BDC   Eelec    Spr    KE%  Stab
+     1  54.3%   0.7283  59.8%   13.1   449.2   95%     0  OK
+     2  54.3%   0.7280  59.6%   11.9   449.3   95%     0  OK
+     3  54.3%   0.7279  59.5%   13.6   449.3   95%     0  OK
+     4  54.3%   0.7279  59.3%   12.5   449.3   95%     0  OK
+     5  54.3%   0.7278  59.2%   12.4   448.8   95%     0  OK
+
+  Corpus stats:  >=24% net: 22473  |  >=20% net: 23241
+
+  Parameter sensitivity (vs net efficiency):
+    - air_spring_expansion_gain    -0.450  +++++++++
+    + load_fraction                +0.450  ++++++++
+    - air_spring_reference_bar     -0.434  ++++++++
+    + compression_ratio            +0.397  +++++++
+    + exhaust_open_ms              +0.383  +++++++
+    - ignition_ms                  -0.359  +++++++
+    + generator_adaptive_profile   +0.351  +++++++
+    + generator_force_scale        +0.340  ++++++
+========================================================================
+
+  Scale up further:
+    py -3 designs/phoenix_v3_optimizer.py --trials 2000 --workers 8 --resume --cycles 8
+
+  Re-run best config (full vector — includes frequency):
+    py -3 designs/phoenix_v3_simulation.py --headless --cycles 10 --frequency 69.0 --generator-scale 3.000 --exhaust-open-ms 8.50 --spring-ref-bar 10.0 --load 0.95
+  Or load exported JSON:
+    py -3 designs/phoenix_v3_simulation.py --headless --best-tuning --cycles 10
+
+
+Completed large in 53.9 min (25000 trials, corpus=25000)
+Best net efficiency: 54.3%

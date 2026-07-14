@@ -1,0 +1,66 @@
+FULL DIGITAL TWIN PACK  utc=20260714_083320
+python=C:\Users\c52444a\Desktop\project Phoenix\.venv\Scripts\python.exe
+repo=C:\Users\c52444a\Desktop\project Phoenix
+========================================================================================
+
+>>> START export_evidence_pack
+    cmd: C:\Users\c52444a\Desktop\project Phoenix\.venv\Scripts\python.exe scripts/export_evidence_pack.py
+Traceback (most recent call last):
+  File "C:\Users\c52444a\Desktop\project Phoenix\scripts\export_evidence_pack.py", line 140, in <module>
+    main()
+  File "C:\Users\c52444a\Desktop\project Phoenix\scripts\export_evidence_pack.py", line 112, in main
+    text = _build_report()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\c52444a\Desktop\project Phoenix\scripts\export_evidence_pack.py", line 54, in _build_report
+    build_executive_summary(trials=16).report(),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\c52444a\Desktop\project Phoenix\digital_twin\summary.py", line 160, in build_executive_summary
+    c for c in run_ice_fleet(cycles=[mixed])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\c52444a\Desktop\project Phoenix\digital_twin\ice_benchmark.py", line 105, in run_ice_fleet
+    res = run(build(), cycle)
+          ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\c52444a\Desktop\project Phoenix\digital_twin\simulation.py", line 123, in run
+    rec = twin.step(speed, accels[i], cycle.grades_rad[i], dt)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\c52444a\Desktop\project Phoenix\digital_twin\powertrain.py", line 94, in step
+    if self._use_dynamic_ring:
+       ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'ICEPowertrain' object has no attribute '_use_dynamic_ring'
+<<< END export_evidence_pack  FAIL(1)  elapsed_s=5.6
+
+>>> START export_gate1_matrix
+    cmd: C:\Users\c52444a\Desktop\project Phoenix\.venv\Scripts\python.exe scripts/export_gate1_matrix.py
+Wrote C:\Users\c52444a\Desktop\project Phoenix\docs\evidence-pack\GATE1-VIRTUAL-BENCH-MATRIX.csv (48 rows)
+
+=== Virtual Gate 1 bench matrix (simulation � not measured) ===
+  Grid: 4 speeds � 4 loads � 3 tiers = 48 cells
+  Overall pass rate: 100% (48/48)
+
+=== Gate 1 virtual bench � Tier 2 (medium) (48/48 cells pass) ===
+  load \ speed | 1800 | 2200 | 2600 | 3000
+  ------------------------------------------
+   25%       |PASSPASSPASSPASS
+   50%       |PASSPASSPASSPASS
+   75%       |PASSPASSPASSPASS
+  100%       |PASSPASSPASSPASS
+
+=== Sweet-spot snapshot (medium tier, 2600 rpm, 75% load) ===
+  Stroke (mm)         : 50.0
+  Peak power (kW)     : 58.1
+  Electric efficiency : 0.496
+  IMEP (bar)          : 4.2
+  Bench checks        : 6/6 pass
+
+=== Sweet-spot uncertainty bands (perturbed inputs) ===
+  0.49 +/- 0.02   90% CI [0.46, 0.52]
+  57.43 +/- 3.32 kW  90% CI [51.66, 62.82]
+  4.22 +/- 0.21 bar  90% CI [3.93, 4.56]
+
+=== Vehicle twin: fixed tier tables vs Gate 1 physics (AWD SUV, highway CS) ===
+  Fixed tables      : 2.17 L/100 km
+  Gate 1 physics    : 1.84 L/100 km
+  Delta             : -0.33 L/100 km (-15.1%)
+
+  DISCLAIMER: virtual bench only � hardware measurement required before
+  commercial claims. Prefix external statements with 'simulation shows�'.

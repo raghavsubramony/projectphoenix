@@ -1,0 +1,19 @@
+GATE6-PHYSICS-TWIN
+Phoenix V3.1 — PhysicsTwinBackend (lumped)
+Date: 2026-07-14
+Status: ADVANCED (callable; not CFD)
+
+WHAT LANDED
+  PhysicsTwinBackend replaces probe-only extrapolation as supervisor default
+  (SupervisorConfig.twin_fidelity="physics"). Integrates:
+    - first-order wall / generator thermal RC under load
+    - efficiency derate vs generator temperature
+    - fault-risk growth with thermal + low health
+    - NVH proxy coupled to buffer SoC (PCMRITMS rotor intensity)
+
+FIDELITY
+  physics_lumped — not cycle-resolved combustion CFD. ProbeTwinBackend remains
+  available via twin_fidelity="probe".
+
+TESTS
+  tests/test_atpe_brain.py::test_physics_twin_fidelity

@@ -1,0 +1,37 @@
+PCMRITMS BRAIN STRESS A/B STUDY
+Policy: benefit-seeking + hysteresis + post-assist cooldown +
+        steady-load precharge suppress
+Metrics: raw CS fuel, buffer-equalized fuel (restore SoC to start),
+         R/A, carts, cover frac, peak shortfall / uncovered W
+Duration scale: 600 s
+
+=== transient (buf=1.00) ===
+  OFF  fuel 10.19  fuelEqBuf 17.51  SoC 1.00->0.00  carts  4.3  a/s/p 0/0/0  R/A  0.00  cover 100.0%  pkShort   0.0kW
+  ON   fuel 10.71  fuelEqBuf 15.98  SoC 1.00->0.00  carts  3.7  a/s/p 23/11/6  R/A  0.07  cover 100.0%  pkShort   0.0kW
+  dfuel raw -0.518 (-5.08%)  dfuelEqBuf +1.531 (+8.74%)  dcarts -0.55  dcover +0.00pt  assistWh 398.8  prechWh 26.9
+
+=== tow_grade (buf=1.00) ===
+  OFF  fuel  8.83  fuelEqBuf  8.21  SoC 1.00->0.00  carts  3.9  a/s/p 0/0/0  R/A  0.00  cover 100.0%  pkShort   0.0kW
+  ON   fuel  8.83  fuelEqBuf  8.21  SoC 1.00->0.00  carts  3.9  a/s/p 0/0/0  R/A  0.00  cover 100.0%  pkShort   0.0kW
+  dfuel raw +0.000 (+0.00%)  dfuelEqBuf +0.000 (+0.00%)  dcarts +0.00  dcover +0.00pt  assistWh 0.0  prechWh 0.0
+
+=== low_buf_launch (buf=0.22) ===
+  OFF  fuel 10.50  fuelEqBuf 17.05  SoC 0.22->0.00  carts  4.3  a/s/p 0/0/0  R/A  0.00  cover 100.0%  pkShort   0.0kW
+  ON   fuel 10.90  fuelEqBuf 15.64  SoC 0.22->0.00  carts  3.7  a/s/p 14/7/5  R/A  0.10  cover 100.0%  pkShort   0.0kW
+  dfuel raw -0.400 (-3.81%)  dfuelEqBuf +1.415 (+8.30%)  dcarts -0.53  dcover +0.00pt  assistWh 247.7  prechWh 25.0
+
+=== n1_transient (buf=1.00 isolate=5) ===
+  OFF  fuel 10.28  fuelEqBuf 17.19  SoC 1.00->0.00  carts  4.1  a/s/p 0/0/0  R/A  0.00  cover 100.0%  pkShort   0.0kW
+  ON   fuel 10.70  fuelEqBuf 15.54  SoC 1.00->0.00  carts  3.6  a/s/p 16/7/0  R/A  0.00  cover 100.0%  pkShort   0.0kW
+  dfuel raw -0.426 (-4.14%)  dfuelEqBuf +1.656 (+9.63%)  dcarts -0.47  dcover +0.00pt  assistWh 267.9  prechWh 0.0
+
+--- Summary (positive dfuelEqBuf = brain better after buffer restore) ---
+  transient       raw -0.518 (-5.08%)  eqBuf +1.531 (+8.74%)  a/s/p 23/11/6  R/A 0.07  cover 100.0->100.0%  short 0/0
+  tow_grade       raw +0.000 (+0.00%)  eqBuf +0.000 (+0.00%)  a/s/p 0/0/0  R/A 0.00  cover 100.0->100.0%  short 0/0
+  low_buf_launch  raw -0.400 (-3.81%)  eqBuf +1.415 (+8.30%)  a/s/p 14/7/5  R/A 0.10  cover 100.0->100.0%  short 0/0
+  n1_transient    raw -0.426 (-4.14%)  eqBuf +1.656 (+9.63%)  a/s/p 16/7/0  R/A 0.00  cover 100.0->100.0%  short 0/0
+
+INTERPRETATION
+  fuelEqBuf restores end buffer SoC to start via equivalent engine fuel.
+  Prefer dfuelEqBuf and cover/carts over raw fuel when SoC end differs.
+

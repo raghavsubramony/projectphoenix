@@ -1,0 +1,13 @@
+DYNAMIC RING TWIN STUDY
+Duration per cycle: 300 s
+
+--- Tier-lump V3 ---
+mixed       fuel  5.45 L/100km  eta 43.7%  shortfalls 0  mean active carts  0.0
+highway     fuel  5.58 L/100km  eta 48.4%  shortfalls 0  mean active carts  0.0
+
+--- Gate-5 dynamic ring ---
+mixed       fuel  5.17 L/100km  eta 54.9%  shortfalls 0  mean active carts  3.6
+    dispatch modes: city:10, highway:2, idle:15, off:571, overtake:1, track:1
+highway     fuel  5.27 L/100km  eta 55.1%  shortfalls 0  mean active carts  2.2
+    dispatch modes: city:11, idle:77, off:252
+

@@ -1,0 +1,89 @@
+ATPE-BRAIN-ARCH-001
+Phoenix V3.1 — ATPE AI Brain Software Architecture
+Date: 2026-07-14
+
+PURPOSE
+  Supervisory AI layer above deterministic ECUs. Predicts, schedules, balances,
+  protects, and optimizes the 4/6/2 mixed ring without direct high-frequency
+  actuator control. Coordinates PCMRITMS (inertial buffer) with ATPE cartridge
+  dispatch per the two-loop design in docs/04-muv-suv-system-requirements.md.
+
+THREE-LAYER STACK
+  Layer 1  Physical Engine     designs/phoenix_v3_simulation.py
+  Layer 2  Deterministic ECUs  designs/phoenix_v3/controls.py
+  Layer 3  ATPE AI Brain       atpe_brain/
+
+MODULE MAP
+  digital_twin.py     Short-horizon predict (+ multi-horizon helper)
+  physics_twin.py     Gate-6 TwinBackend scaffold (probe / physics stub)
+  pcmritms.py         Buffer assist / pre-charge / burst + closed-loop assist
+  scheduler.py        Demand ladder dispatch (Gate-5 cartridge_scheduler)
+  ring_balancer.py    RBI / capture variance load trims
+  thermal_manager.py  Thermal forecast + spare (uses thermal horizon when on)
+  health_monitor.py   Per-slot composite health score
+  fault_manager.py    Health-based isolation and N-1 recovery
+  optimizer.py        Weighted score (eta, health, thermal, balance, fault)
+  state_estimator.py  Fuse probes + live telemetry + buffer SoC
+  supervisor.py       Main control loop (ATPESupervisor.cycle)
+  cartridge.py        Probe and snapshot types
+  ring.py             RingContext (slots, probes, states, coolant)
+
+MAIN LOOP (supervisor.cycle)
+  1. state_estimator.update(ring, buffer_soc)
+  2. health_monitor.evaluate(ring)
+  3. fault_manager.solve(states, health)
+  4. pcmritms.solve(bus, engine_setpoint, buffer, slow_setpoint=filtered)
+       benefit-seeking: residual = bus - filtered;
+                         assist / surge on launch residual;
+                         precharge only post-assist recovery (not tow/cruise);
+                         closed-loop assist-error trim
+  5. digital_twin.predict(estimate, horizon=50)
+     optional multi-horizon: control50 / thermal500 / health5000
+  6. scheduler.solve(engine_demand, slots, states)
+  7. ring_balancer.solve(prediction, ring)
+  8. thermal_manager.solve(thermal_pred, ring, dt)
+  9. optimizer.generate(plans + buffer_plan) -> BrainCommands
+
+PCMRITMS INTEGRATION (docs/04 two-loop hierarchy)
+  Fast loop   Brain authorizes buffer_burst_w on genuine launches
+  Slow loop   Schedule demand uses buffer SoC (assist softens spike chase;
+              pre-charge raises demand when SoC < target)
+  Closed-loop Measured buffer_w feedback trims over-credited assist
+  Vehicle     Powertrain passes BufferTelemetry + observe_buffer_exchange
+  Toggle      DynamicRingConfig.pcmritms_brain_enabled (A/B study)
+
+VEHICLE INTEGRATION
+  digital_twin/atpe_ring.py :: DynamicRingATPE
+  digital_twin/powertrain.py :: live buffer telemety + burst cap
+
+VALIDATED EVIDENCE (Gate-5 / dynamic twin)
+  Ring peak:        313.2 kW @ 54.7% eta, RBI 0%, peak 363 N
+  Scheduler ladder: 25–310 kW demand tracked within ~1–3%
+  Fault N-1:        slot 5 isolated, 250 kW on 9 cartridges
+  Twin fuel gain:   mixed 5.45 -> 5.17 L/100km (dynamic vs tier-lump)
+                    << NOT a brain-PCMRITMS attribution; see A/B study >>
+  Mean active:      3.6 mixed / 2.2 highway of 12 cartridges
+
+GATE-6 REVIEW / BACKLOG
+  docs/evidence-pack/GATE6-ATPE-BRAIN-REVIEW.txt
+  docs/evidence-pack/GATE6-BACKLOG.txt
+  docs/evidence-pack/PCMRITMS-BRAIN-COORD-PASS.txt
+  docs/evidence-pack/PCMRITMS-BRAIN-AB-STUDY.txt
+  docs/evidence-pack/PCMRITMS-BRAIN-STRESS-AB.txt
+
+  DONE     PCMRITMS Brain Coordinator Gen3 — PASS (calib closed)
+  STARTED  Multi-horizon + PhysicsTwinBackend scaffold
+  NEXT     1. Full physics digital twin (replace probe extrapolation)
+  NEXT     2. Closed-loop per-rotor PCMRITMS phasing
+  NEXT     3. Long-duration endurance validation
+  NEXT     4. Health-aware assist prioritization
+  NEXT     5. HIL verification (ATPE-BRAIN-VV-001)
+  NEXT     6. Fleet-learning weight adaptation (weights only)
+
+STATUS
+  ATPE Brain prototype: IMPLEMENTED (atpe_brain/)
+  Vehicle twin wired:   YES (DynamicRingATPE -> ATPESupervisor)
+  PCMRITMS in brain:    PASS (coordinator calib closed)
+  Closed-loop surge:    assist-error trim YES; per-rotor phase OPEN
+  Digital twin depth:   PROBE-BASED + multi-horizon / physics scaffold
+  Gate-6 focus:         twin fidelity + rotor V&V (not coordinator tune)

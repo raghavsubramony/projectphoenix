@@ -1,0 +1,66 @@
+GATE-5 PRODUCTION FREEZE — Phoenix V3 Mixed Ring (APPROVED)
+============================================================
+Date: 2026-07-13
+Status: APPROVED production freeze candidate (supersedes Gate-4 Option 2+1)
+
+EXECUTIVE DECISION
+------------------
+Freeze Gate-5 stack as production baseline. Gate-5 improves on Gate-4 Option 2+1:
+  - Same power and efficiency (~313 kW, ~54.7%)
+  - Medium RBI: 6.23% -> 0.00%
+  - Peak force: ~1290 N -> ~436 N (NVH proxy)
+
+FROZEN CONFIGURATION
+--------------------
+Layout:       4 micro + 6 medium + 2 large (12 cartridges)
+Schedule:     tier_blocks (static geometry); runtime dispatch via cartridge_scheduler
+Large tier:   32.9 Hz (tuned JSON — do NOT harmonic-lock)
+Load policy:  GATE5_PRODUCTION_LOAD_POLICY (medium-heavy)
+              micro x0.95, medium x1.00, large x0.94
+Phase:        Gate-5 medium capture uniformity + per-tier NVH layout
+
+Code entry points:
+  designs.phoenix_v3.cartridge_scheduler.build_gate5_production_options()
+  designs.phoenix_v3.cartridge_scheduler.schedule_for_demand()
+
+VALIDATED PERFORMANCE (12 cycles, Gate-5)
+-----------------------------------------
+Total electrical power:   313.2 kW
+Ring efficiency:          54.7%
+Energy balance:           PASS
+Boundary:                 PASS
+Tier RBI (tRBI):          ~0.07%
+Medium cohort RBI:        0.00%
+Peak resultant force:     ~436 N
+Spring recovery:          95%
+
+DYNAMIC SCHEDULER (demand ladder)
+---------------------------------
+Idle:      2 micro          (~55 kW)
+City:      4 micro          (~111 kW)
+Highway:   4 micro + 2 med  (~170 kW)
+Overtake:  4 micro + 6 med  (~287 kW)
+Track:     all 12           (~313 kW)
+
+Runtime module: designs/phoenix_v3/cartridge_scheduler.py
+Vehicle twin:   digital_twin/atpe_ring.py (DynamicRingATPE)
+Twin builder:   digital_twin.build_dynamic_ring_twin()
+Study scripts:  scripts/run_dynamic_ring_scheduler_study.py
+                scripts/run_dynamic_ring_twin_study.py
+
+WHOLE-ENGINE LAYERS (new)
+-------------------------
+- cartridge_state.py   — per-slot thermal, fault, health state
+- health_score.py      — predictive maintenance score per cartridge
+- cartridge_scheduler.py — demand dispatch + thermal rotation + fault isolation
+
+DO NOT CHANGE
+-------------
+- Harmonic lock to 2:1
+- micro_medium_ring layout
+- Large tier retune at 32.9 Hz
+
+See also:
+  docs/evidence-pack/GATE5-MEDIUM-PHASE-STUDY.txt
+  docs/evidence-pack/DYNAMIC-RING-SCHEDULER-STUDY.txt
+  docs/evidence-pack/GATE4-PRODUCTION-FREEZE.txt (superseded)

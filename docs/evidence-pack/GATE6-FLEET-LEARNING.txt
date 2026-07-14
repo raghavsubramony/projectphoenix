@@ -1,0 +1,18 @@
+GATE6-FLEET-LEARNING
+Phoenix V3.1 — OptimizerWeights fleet adaptation
+Date: 2026-07-14
+Status: ADVANCED
+
+SCOPE
+  FleetWeightAdapter observes OptimizationScore by mission mode and nudges
+  OptimizerWeights only. Never learns fault logic, thermal hard caps, or ECU maps.
+
+RUN
+  py -3 scripts/run_gate6_fleet_learning_demo.py
+
+WIRING
+  SupervisorConfig.enable_fleet_learning (default False)
+  SupervisorConfig.fleet_mission_mode = launch|cruise|endurance|failure|thermal
+
+TESTS
+  tests/test_atpe_brain.py::test_fleet_weight_adapter_raises_thermal

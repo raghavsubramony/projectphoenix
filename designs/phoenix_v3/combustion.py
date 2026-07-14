@@ -72,8 +72,17 @@ class StochasticCombustionModel:
         time_scale: float,
     ) -> tuple[float, float, float, float]:
         fuel_delta_j = 0.0
-        if fault and fault.kind == "misfire" and cycle_index == fault.trigger_cycle:
-            return state.pressure_pa, state.temperature_k, burn_frac, fuel_delta_j
+        if fault and cycle_index >= fault.trigger_cycle:
+            if fault.kind == "misfire" and cycle_index == fault.trigger_cycle:
+                return state.pressure_pa, state.temperature_k, burn_frac, fuel_delta_j
+            if fault.kind == "injector_failure":
+                return state.pressure_pa, state.temperature_k, burn_frac, fuel_delta_j
+            if fault.kind == "pressure_sensor_fault":
+                q_scale = 0.85
+            else:
+                q_scale = 1.0
+        else:
+            q_scale = 1.0
 
         draw = self.draw_for_cycle(cycle_index, cfg)
         ignition_ms = (cfg.ignition_ms + draw.ignition_offset_ms) * time_scale
@@ -86,7 +95,7 @@ class StochasticCombustionModel:
         if delta <= 0.0:
             return state.pressure_pa, state.temperature_k, burn_frac, fuel_delta_j
 
-        q = delta * draw.fuel_energy_j * cfg.combustion_pressure_gain
+        q = delta * draw.fuel_energy_j * cfg.combustion_pressure_gain * q_scale
         fuel_delta_j = q
         m = state.mass_kg
         u = m * R_AIR * state.temperature_k / (GAMMA - 1.0) + q

@@ -1,0 +1,16 @@
+GATE6-ROTOR-PHASING
+Phoenix V3.1 — Closed-loop per-rotor PCMRITMS phasing
+Date: 2026-07-14
+Status: ADVANCED
+
+WHAT LANDED
+  ClosedLoopRotorPhaser (atpe_brain/rotor_phasing.py) P-controls rotor phases
+  toward equal 120 deg spacing using digital_twin.pcmritms_rotor.RotorSet.
+  Coherence maps to surge_scale; PcmritmsCoordinator applies it to peak burst.
+
+WIRING
+  ATPESupervisor.cycle → rotor_phaser.step(dt) → pcmritms.solve(surge_scale=...)
+  Toggle: SupervisorConfig.enable_rotor_phasing (default True)
+
+TESTS
+  tests/test_atpe_brain.py::test_rotor_phaser_improves_coherence

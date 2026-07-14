@@ -99,8 +99,10 @@ class ATPE:
 
             point = phoenix_v3_gate1_point(
                 load_fraction,
+                tier_index=share.index,
                 tuning_path=gate1.tuning_path,
                 cycles=gate1.v3_cycles,
+                tier_curves=gate1.v3_tier_curves,
                 generator_efficiency=self.cfg.generator_efficiency,
             )
         else:

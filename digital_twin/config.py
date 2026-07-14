@@ -29,6 +29,44 @@ class TierSpec:
 
 
 @dataclass(frozen=True)
+class V3TierCalibrationPoint:
+    """One (load, efficiency) sample from a tier-scaled Phoenix V3 cartridge run."""
+
+    load_frac: float
+    net_efficiency: float
+    elec_power_w: float
+    peak_pressure_bar: float
+    energy_balance_valid: bool
+
+
+@dataclass(frozen=True)
+class V3TierCalibration:
+    """Pre-computed V3 efficiency map for one ATPE tier geometry."""
+
+    tier_index: int
+    tier_name: str
+    displacement_cc: float
+    points: tuple[V3TierCalibrationPoint, ...]
+    derivation: str = "phoenix_v3_sim"
+
+    def efficiency_at(self, load_frac: float) -> float:
+        load_frac = max(0.0, min(1.0, load_frac))
+        if not self.points:
+            return 0.10
+        pts = self.points
+        if load_frac <= pts[0].load_frac:
+            return pts[0].net_efficiency
+        for lo, hi in zip(pts, pts[1:]):
+            if lo.load_frac <= load_frac <= hi.load_frac:
+                span = hi.load_frac - lo.load_frac
+                if span <= 0.0:
+                    return hi.net_efficiency
+                frac = (load_frac - lo.load_frac) / span
+                return lo.net_efficiency + frac * (hi.net_efficiency - lo.net_efficiency)
+        return pts[-1].net_efficiency
+
+
+@dataclass(frozen=True)
 class SingleCylinderGate1Config:
     """Optional Gate 1 single-cylinder model controls for ATPE tiers."""
 
@@ -38,6 +76,25 @@ class SingleCylinderGate1Config:
     use_phoenix_v3: bool = False
     tuning_path: str | None = None
     v3_cycles: int = 16
+    # Pre-computed per-tier V3 maps; drive-cycle steps interpolate these
+    # instead of re-running the cartridge simulator every timestep.
+    v3_tier_curves: tuple[V3TierCalibration, ...] = ()
+
+
+@dataclass(frozen=True)
+class DynamicRingConfig:
+    """Gate-5 mixed ring with per-cartridge demand dispatch (vehicle twin)."""
+
+    enabled: bool = False
+    use_gate5_production: bool = True
+    probe_cycles: int = 6
+    shared_coolant: bool = True
+    fast_probe: bool = True
+    # When False, DynamicRingATPE still runs the brain scheduler but does not
+    # feed BufferTelemetry into PcmritmsCoordinator (A/B: brain-PCMRITMS off).
+    pcmritms_brain_enabled: bool = True
+    # Gate-6: adjust assist/burst from measured buffer exchange (closed-loop).
+    closed_loop_surge: bool = True
 
 
 @dataclass(frozen=True)
@@ -54,6 +111,8 @@ class ATPEConfig:
     max_slew_w_per_s: float | None = None
     # Optional Gate 1 physics-derived efficiency path.
     gate1: SingleCylinderGate1Config | None = None
+    # Optional Gate-5 dynamic ring scheduler (replaces tier-lump dispatch).
+    dynamic_ring: DynamicRingConfig | None = None
 
     @property
     def max_electric_w(self) -> float:
@@ -337,41 +396,74 @@ def with_phoenix_v3(
     *,
     tuning_path: str | None = None,
     reference_load_fraction: float = 0.75,
-    v3_cycles: int = 24,
+    v3_cycles: int = 16,
+    load_sample_fractions: tuple[float, ...] | None = None,
 ) -> TwinConfig:
-    """Enable Phoenix V3 cartridge physics for ATPE tier efficiencies."""
+    """Enable per-tier Phoenix V3 cartridge physics for ATPE efficiencies."""
     from dataclasses import replace as dc_replace
 
-    from .phoenix_v3_bridge import measure_v3_cartridge, resolve_best_tuning_path
+    from .phoenix_v3_bridge import calibrate_all_v3_tiers
 
-    path = resolve_best_tuning_path(tuning_path)
-    metrics = measure_v3_cartridge(
-        load_fraction=reference_load_fraction,
-        cycles=v3_cycles,
-        tuning_path=path,
-    )
-    ref_eta = metrics.net_efficiency
-    old_tiers = cfg.atpe.tiers
-    if not old_tiers:
-        return cfg
-    ref_index = min(1, len(old_tiers) - 1)
-    ref_table = old_tiers[ref_index].thermal_efficiency
-    scale = ref_eta / max(ref_table, 1e-9)
+    kwargs: dict = {
+        "cycles": v3_cycles,
+        "tier_count": len(cfg.atpe.tiers),
+    }
+    if tuning_path is not None:
+        kwargs["tuning_path"] = tuning_path
+    if load_sample_fractions is not None:
+        kwargs["load_fractions"] = load_sample_fractions
+    calibrations = calibrate_all_v3_tiers(**kwargs)
+    sweet_by_index = {
+        c.tier_index: max(p.net_efficiency for p in c.points)
+        for c in calibrations
+    }
     new_tiers = tuple(
-        dc_replace(t, thermal_efficiency=max(0.10, min(t.thermal_efficiency * scale, 0.58)))
-        for t in old_tiers
+        dc_replace(
+            t,
+            thermal_efficiency=max(
+                0.10,
+                min(sweet_by_index.get(i, t.thermal_efficiency), 0.58),
+            ),
+        )
+        for i, t in enumerate(cfg.atpe.tiers)
     )
     gate1 = SingleCylinderGate1Config(
         enabled=True,
         use_phoenix_v3=True,
-        tuning_path=str(path) if path else None,
+        tuning_path=tuning_path,
         v3_cycles=v3_cycles,
         prefer_cantera=False,
+        v3_tier_curves=calibrations,
     )
     return dc_replace(
         cfg,
         atpe=dc_replace(cfg.atpe, tiers=new_tiers, gate1=gate1),
     )
+
+
+def with_dynamic_ring(
+    cfg: TwinConfig,
+    *,
+    probe_cycles: int = 6,
+    shared_coolant: bool = True,
+    fast_probe: bool = True,
+    pcmritms_brain_enabled: bool = True,
+    closed_loop_surge: bool = True,
+) -> TwinConfig:
+    """Enable Gate-5 dynamic ring dispatch on the vehicle twin (with V3 calibration)."""
+    from dataclasses import replace as dc_replace
+
+    cfg = with_phoenix_v3(cfg, v3_cycles=probe_cycles)
+    ring = DynamicRingConfig(
+        enabled=True,
+        use_gate5_production=True,
+        probe_cycles=probe_cycles,
+        shared_coolant=shared_coolant,
+        fast_probe=fast_probe,
+        pcmritms_brain_enabled=pcmritms_brain_enabled,
+        closed_loop_surge=closed_loop_surge,
+    )
+    return dc_replace(cfg, atpe=dc_replace(cfg.atpe, dynamic_ring=ring))
 
 
 def with_battery_thermal(

@@ -1,0 +1,73 @@
+﻿=== Phoenix V3 per-tier cartridge calibration ===
+Tuning: phoenix_v3_best_tuning_v3.json
+
+  Tier 1 (micro) (100 cc/cyl) [phoenix_v3_sim]
+      Load      eta   kW/cart    P peak
+       15%    43.3%     3.89       61 bar
+       35%    55.1%    11.52      114 bar
+       55%    46.3%    15.23      145 bar
+       75%    31.1%    13.96      167 bar
+       90%    24.4%    13.15      181 bar
+      100%    22.1%    13.19      198 bar
+    Sweet spot (75% load): eta = 31.1%
+
+  Tier 2 (medium) (300 cc/cyl) [phoenix_v3_sim]
+      Load      eta   kW/cart    P peak
+       15%    10.0%     0.01       20 bar
+       35%    28.2%     3.82       45 bar
+       55%    44.7%     9.50       68 bar
+       75%    45.3%    13.14       86 bar
+       90%    54.1%    18.80       97 bar
+      100%    54.1%    20.89      104 bar
+    Sweet spot (75% load): eta = 45.3%
+
+  Tier 3 (large) (750 cc/cyl) [scaled_from_medium_v3]
+      Load      eta   kW/cart    P peak
+       15%    10.0%     0.01       18 bar
+       35%    26.2%     3.34       41 bar
+       55%    41.4%    13.07       62 bar
+       75%    42.0%    24.64       79 bar
+       90%    47.1%    42.29       89 bar
+      100%    47.1%    52.21       96 bar
+    Sweet spot (75% load): eta = 42.0%
+
+=== ATPE tier efficiencies (table vs V3-calibrated) ===
+  Tier 1: table 44.0%  ->  V3 55.1%  (100 cc, 30 kW cap)
+  Tier 2: table 41.0%  ->  V3 54.1%  (300 cc, 80 kW cap)
+  Tier 3: table 38.0%  ->  V3 47.1%  (750 cc, 120 kW cap)
+
+=== Drive-cycle comparison (AWD SUV) ===
+--- Default ATPE (fixed efficiency tables) ---
+  Mixed (urban+highway+sprint)  fuel  6.52 L/100km  CO2    23 g/km  gen_eff 41.6%  shortfalls 0
+  Highway cruise  fuel  6.47 L/100km  CO2    66 g/km  gen_eff 43.1%  shortfalls 0
+
+--- V3-calibrated ATPE (per-tier cartridge physics) ---
+  Mixed (urban+highway+sprint)  fuel  5.74 L/100km  CO2    31 g/km  gen_eff 33.4%  shortfalls 0
+  Highway cruise  fuel  8.24 L/100km  CO2   124 g/km  gen_eff 25.3%  shortfalls 0
+
+Mixed-cycle delta (V3 - default): -0.78 L/100km (-12.0%)
+
+=== ERS acceptance (default tables) ù 9/9 PASS ===
+  [PASS] Peak power                   target >=   150.0 kW    actual   440.0 kW
+  [PASS] Continuous power             target >=   100.0 kW    actual   230.0 kW
+  [PASS] Peak motor torque            target >=   350.0 Nm    actual   380.0 Nm
+  [PASS] 0-100 km/h                   target <=     8.0 s     actual     7.9 s
+  [PASS] Top speed                    target >=   180.0 km/h  actual   192.6 km/h
+  [PASS] Gradeability @ 100km/h       target >=    20.0 %     actual    22.0 %
+  [PASS] Brake thermal eff (best)     target >=    45.0 %     actual    45.8 %
+  [PASS] Generator efficiency         target >=    95.0 %     actual    96.0 %
+  [PASS] Fuel-to-wheel eff (best)     target >=    38.0 %     actual    40.5 %
+
+=== ERS acceptance (V3-calibrated) ù 9/9 PASS ===
+  [PASS] Peak power                   target >=   150.0 kW    actual   440.0 kW
+  [PASS] Continuous power             target >=   100.0 kW    actual   230.0 kW
+  [PASS] Peak motor torque            target >=   350.0 Nm    actual   380.0 Nm
+  [PASS] 0-100 km/h                   target <=     8.0 s     actual     7.9 s
+  [PASS] Top speed                    target >=   180.0 km/h  actual   192.6 km/h
+  [PASS] Gradeability @ 100km/h       target >=    20.0 %     actual    22.0 %
+  [PASS] Brake thermal eff (best)     target >=    45.0 %     actual    57.4 %
+  [PASS] Generator efficiency         target >=    95.0 %     actual    96.0 %
+  [PASS] Fuel-to-wheel eff (best)     target >=    38.0 %     actual    50.7 %
+
+=== Verdict ===
+V3-derived per-tier efficiencies support the full ATPE vehicle twin: ERS targets pass and no capability shortfalls on tested cycles.

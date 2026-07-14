@@ -1,0 +1,16 @@
+GATE6-HEALTH-ASSIST
+Phoenix V3.1 — Health-aware PCMRITMS assist prioritization
+Date: 2026-07-14
+Status: ADVANCED
+
+POLICY
+  When min_health_pct < health_protect_threshold_pct (default 90):
+    spike_assist_threshold *= health_protect_threshold_scale (default 0.70)
+  When assist_event and cartridges are below health target:
+    soft load_scale demote to <=0.70 before scheduling
+
+INTENT
+  Prefer buffer absorbtion over firing marginal tiers (longevity / N-1).
+
+TESTS
+  tests/test_atpe_brain.py::test_health_aware_assist_lowers_spike_threshold

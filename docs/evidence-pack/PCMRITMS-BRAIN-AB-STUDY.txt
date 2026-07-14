@@ -1,0 +1,41 @@
+PCMRITMS BRAIN A/B STUDY
+Policy: benefit-seeking (assist only on residual spike; precharge only
+        when SoC < 0.40 toward 0.55; otherwise pass-through)
+Physical InertialBuffer: ALWAYS ON
+Toggle: ATPE Brain PcmritmsCoordinator
+Duration per cycle: 1200 s
+Config: Phase-1 AWD SUV, Gate-5 dynamic ring, rotor_coupled=True,
+        charge-sustaining SoC (0.55)
+
+NOTE: Gate-5 dynamic-vs-tier-lump 5.45→5.17 is NOT this study.
+
+--- Brain-PCMRITMS OFF (schedule raw setpoint) ---
+  mixed       fuel  4.57 L/100km  eta 55.0%  shortfalls 0  mean active carts  3.8
+    buffer Wh  out   165.1  in   169.8  net    -4.6
+    SoC mean 0.071  std 0.217  t_below  1130s  t_above    70s
+    events  assist 0  precharge 0  surge 0
+  highway     fuel  5.08 L/100km  eta 55.1%  shortfalls 0  mean active carts  3.3
+    buffer Wh  out   214.4  in   231.3  net   -17.0
+    SoC mean 0.297  std 0.422  t_below   899s  t_above   411s
+    events  assist 0  precharge 0  surge 0
+
+--- Brain-PCMRITMS ON (benefit-seeking + closed-loop) ---
+  mixed       fuel  4.57 L/100km  eta 55.0%  shortfalls 0  mean active carts  3.8
+    buffer Wh  out   165.1  in   169.8  net    -4.6
+    SoC mean 0.071  std 0.217  t_below  1130s  t_above    70s
+    events  assist 0  precharge 0  surge 0
+  highway     fuel  5.08 L/100km  eta 55.1%  shortfalls 0  mean active carts  3.3
+    buffer Wh  out   214.4  in   231.3  net   -17.0
+    SoC mean 0.297  std 0.422  t_below   899s  t_above   411s
+    events  assist 0  precharge 0  surge 0
+
+--- Delta (OFF - ON); positive = brain reduced fuel ---
+mixed       +0.000 L/100km  (+0.00%)
+    net buffer Wh delta (ON-OFF) +0.0  assist 0  precharge 0  surge 0
+highway     +0.000 L/100km  (+0.00%)
+    net buffer Wh delta (ON-OFF) +0.0  assist 0  precharge 0  surge 0
+
+INTERPRETATION
+  Instrument net_buffer_wh and event counts before attributing fuel deltas.
+  Benefit-seeking should keep highway near pass-through (few events).
+

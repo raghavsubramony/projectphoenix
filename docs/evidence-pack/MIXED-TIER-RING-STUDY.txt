@@ -1,0 +1,28 @@
+ATPE MIXED-TIER RING STUDY (simulation)
+Layout: 4/6/2 (micro/medium/large)
+Cycles per cartridge: 12
+Load policy: adaptive (micro×1.00 medium×1.05 large×0.85)
+
+Tier parameter audit:
+  Tier 1 (micro): 100 cc  phoenix_v3_best_tuning_micro.json  [PASS]
+  Tier 2 (medium): 300 cc  phoenix_v3_best_tuning_v3.json  [PASS]
+  Tier 3 (large): 750 cc  phoenix_v3_best_tuning_large.json  [PASS]
+    harmonic ratio fast/large: 1.848
+
+Scheduling comparison (peak frame force proxy, lower is better):
+  tier_blocks          307.7 kW  eta 53.2%  tRBI 1.2%  cRBI 20.1%  peak 1299 N  beat 28.0 Hz
+  micro_medium_ring    307.7 kW  eta 53.2%  tRBI 1.2%  cRBI 20.1%  peak 2472 N  beat 28.0 Hz
+  harmonic_paired      307.7 kW  eta 53.2%  tRBI 1.2%  cRBI 20.1%  peak 2009 N  beat 28.0 Hz
+  interleaved          307.7 kW  eta 53.2%  tRBI 1.2%  cRBI 20.1%  peak 2001 N  beat 28.0 Hz
+  uniform_medium       351.1 kW  eta 55.0%  tRBI 3.5%  cRBI 3.5%  peak 3031 N  beat 0.0 Hz
+  isolated_banks       (NVH)  peak 1739 N  (tier subframes, no cross-beat)
+
+Recommendation:
+  - Default schedule: tier_blocks
+  - Lowest peak frame force: tier_blocks (1299 N).
+  - Lowest tier RBI: tier_blocks, micro_medium_ring, harmonic_paired, interleaved (1.2%, target < 5%).
+  - Harmonic paired: fast bank (micro+medium interleaved) + large subharmonic bank.
+  - Adaptive load policy lets medium carry slightly more bus load.
+  - Homogeneous 12x medium ring remains simplest NVH path for production.
+
+Note: NVH figures are a lumped unbalanced-force proxy, not measured hardware.

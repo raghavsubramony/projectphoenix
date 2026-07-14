@@ -50,6 +50,9 @@ class ICEPowertrain(Powertrain):
                  controller=None) -> None:
         self.cfg = cfg
         self.vehicle = Vehicle(cfg.vehicle)
+        # ICE path never uses DynamicRingATPE; keep Powertrain.step() flags safe.
+        self._use_dynamic_ring = False
+        self.ring_atpe = None
         self.atpe = ICEEngine(ice_cfg or ICEConfig())  # type: ignore[assignment]
         self.buffer = InertialBuffer(cfg.buffer)
         self.battery = Battery(cfg.battery)

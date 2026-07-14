@@ -1,45 +1,46 @@
 {
-  "score": 0.7155798668567697,
+  "score": 0.7622711564882662,
   "stable": true,
+  "tier": "medium",
+  "total_displacement_cc": 300.0,
+  "displacement_per_side_cc": 150.0,
   "metrics": {
-    "net_efficiency": 0.5404992841344165,
-    "capture_fraction": 0.5026060891166538,
-    "max_bdc_mm": 19.809699355857717,
-    "elec_energy_j": 470.83498000147256,
-    "peak_pressure_bar": 118.10883793104006,
+    "net_efficiency": 0.5496478091841341,
+    "capture_fraction": 0.7896023729500836,
+    "max_bdc_mm": 15.08426393583073,
+    "elec_energy_j": 480.39218522693307,
+    "peak_pressure_bar": 94.33787753409462,
     "spring_recovery": 0.95,
-    "ke_power_fraction": 0.003819022511124644,
-    "unharvested_fraction": 0.03271523469554213
-  },
-  "peak_unstable": {
-    "net_efficiency": 0.67117,
-    "capture_fraction": 0.450875,
-    "max_bdc_mm": 22.216
+    "ke_power_fraction": 0.00044688760642030463,
+    "unharvested_fraction": 0.017115767674059437
   },
   "parameters": {
-    "generator_force_scale": 2.443393,
-    "generator_rated_force_n": 7058.578481,
-    "generator_spring_decouple": 0.293094,
+    "generator_force_scale": 3.282,
+    "generator_rated_force_n": 8360.0,
+    "generator_spring_decouple": 0.14944232822451098,
     "air_spring_reference_bar": 10.0,
-    "air_spring_max_cc": 79.463184,
-    "air_spring_min_cc": 22.343708,
-    "air_spring_expansion_gain": 0.563856,
-    "air_spring_compression_gain": 1.021805,
-    "generator_adaptive_profile": 0.122243,
-    "exhaust_open_ms": 8.8,
-    "load_fraction": 0.94686,
-    "frequency_hz": 42.0,
-    "combustion_pressure_gain": 1.680398,
-    "burn_duration_ms": 1.663208,
-    "damping_n_s_m": 32.574801
+    "air_spring_max_cc": 53.841286828138486,
+    "air_spring_min_cc": 48.557992721986224,
+    "air_spring_expansion_gain": 0.55,
+    "air_spring_compression_gain": 1.2996770567072808,
+    "generator_adaptive_profile": 0.16593677371042662,
+    "exhaust_open_ms": 8.742885378295519,
+    "load_fraction": 0.95,
+    "frequency_hz": 60.9,
+    "combustion_pressure_gain": 1.5057593938988003,
+    "burn_duration_ms": 2.271992585342104,
+    "damping_n_s_m": 33.53300194847814,
+    "ignition_ms": 4.220699277365791,
+    "compression_ratio": 13.4
   },
-  "corpus_size": 780,
+  "corpus_size": 35000,
   "search_version": "v3",
   "physics_note": "Metrics from validate_best_for_export() on current V3 physics; not legacy corpus scores.",
   "ring_validation": {
-    "ring_efficiency": 0.5404652359041766,
-    "ring_gap_pp": 3.404823023989145e-05,
+    "ring_efficiency": 0.5496187886680853,
+    "ring_gap_pp": 2.902051604880551e-05,
     "ring_valid": true,
-    "physics_validated": true
+    "physics_validated": true,
+    "actuator_mode": false
   }
 }

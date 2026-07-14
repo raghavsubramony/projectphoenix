@@ -1,0 +1,61 @@
+GATE6-BACKLOG
+Phoenix V3.1 — Remaining Gate-6 Opportunities
+Date: 2026-07-14
+Status: PCMRITMS Brain Coordinator calibration CLOSED (PASS).
+         Backlog items 1–6 ADVANCED to callable / harness / stub status (see slice notes).
+
+CONTEXT
+  Coordinator Gen3 is PASS (fuelEqBuf +6–8% launch/N-1; tow pass-through;
+  cover 100%; R/A ~0.1–0.3). Further PCMRITMS calib is optional polish only
+  (assist authority cap). Primary Gate-6 investment moved to the items below.
+
+RANKED BACKLOG — STATUS AFTER “DO ALL” SLICE (2026-07-14)
+
+  1. Full physics digital twin ........................ ADVANCED
+     PhysicsTwinBackend now integrates lumped wall/gen RC thermal, efficiency
+     derate, fault risk, rotor NVH coupling (fidelity=physics_lumped).
+     Supervisor default twin_fidelity="physics". Not cycle-resolved CFD yet.
+     Code: atpe_brain/physics_twin.py
+     Evidence: GATE6-PHYSICS-TWIN.txt
+
+  2. Closed-loop per-rotor PCMRITMS phasing ............ ADVANCED
+     ClosedLoopRotorPhaser P-controls phases toward 120 deg spacing; coherence
+     derates surge_scale into PcmritmsCoordinator.
+     Code: atpe_brain/rotor_phasing.py (+ supervisor / pcmritms wiring)
+     Evidence: GATE6-ROTOR-PHASING.txt
+
+  3. Long-duration endurance validation ............... ADVANCED (harness)
+     Multi-pass mixed+highway harness with SoC / health / coolant / R/A traces.
+     Code: scripts/run_gate6_endurance_study.py
+     Evidence: GATE6-ENDURANCE.txt (regenerate with --quick / --hours)
+
+  4. Health-aware assist prioritization ............... ADVANCED
+     Lower spike threshold when min_health < 90%; soft-derate below-target
+     cartridges when assist fires.
+     Code: atpe_brain/pcmritms.py, atpe_brain/supervisor.py
+     Evidence: GATE6-HEALTH-ASSIST.txt
+
+  5. HIL verification (ATPE-BRAIN-VV-001) .............. ADVANCED (stub)
+     Deterministic ECU stub: latency budget, index closure, watchdog hold.
+     Not physical HIL bench — software VV foundation.
+     Code: atpe_brain/hil.py, scripts/run_atpe_brain_vv_001.py
+     Evidence: ATPE-BRAIN-VV-001.txt
+
+  6. Fleet-learning weight adaptation ................. ADVANCED
+     FleetWeightAdapter nudges OptimizerWeights only from logged scores.
+     Code: atpe_brain/fleet_learning.py, scripts/run_gate6_fleet_learning_demo.py
+     Evidence: GATE6-FLEET-LEARNING.txt
+
+CLOSED THIS PHASE (do not reopen without new evidence)
+  - Aggressive / benefit-seeking / hysteresis / cooldown calib cycles
+  - Tow/grade opportunistic brain precharge
+  - Energy-normalized launch A/B methodology (fuelEqBuf + cover/carts)
+
+OPTIONAL POLISH (not blocking)
+  - Assist power/duration authority cap for CS accounting alignment
+  - Promote physics twin from lumped RC → cartridge co-sim / CFD hooks
+  - Promote VV-001 from ECU stub → rack HIL with real latency injectors
+
+NEXT INVESTMENT (if continuing Gate-6)
+  Deepen #1 physics fidelity OR instrument #3 endurance for multi-hour soak
+  claims; physical HIL for #5 when ECU maps are available.

@@ -1,0 +1,19 @@
+GATE6-ENDURANCE
+Phoenix V3.1 — Long-duration endurance harness
+Date: 2026-07-14
+Status: ADVANCED (harness present; regenerate for claim figures)
+
+RUN
+  py -3 scripts/run_gate6_endurance_study.py --quick
+  py -3 scripts/run_gate6_endurance_study.py --hours 2
+
+TRACKS
+  fuel L/100km, buffer SoC band, mean health, coolant peak K, R/A mean/max
+
+SMOKE (--quick, probe=3)
+  fuel ~3.14 L/100km; health ~95; coolant peak ~349 K; harness STATUS=OK
+  SoC band depends on CS buffer state at end of legs — use --hours for soak claims.
+
+NOTE
+  --quick is a smoke pass. Multi-hour soak claims require --hours >= 2 and
+  evidence refresh after probe/config freezes.

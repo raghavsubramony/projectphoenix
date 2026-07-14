@@ -1,5 +1,5 @@
 PROJECT PHOENIX — EVIDENCE BASELINE (auto-generated)
-Generated: 2026-07-03 02:29 UTC
+Generated: 2026-07-14 08:37 UTC
 
 DISCLAIMER: All figures below are simulation outputs unless marked measured.
 Prefix external claims with 'simulation shows…'. Hardware gates not cleared.
@@ -154,12 +154,167 @@ VIRTUAL GATE 1 BENCH (digital prototype — not measured)
   commercial claims. Prefix external statements with 'simulation shows…'.
 
 ========================================================================
+VIRTUAL GATE 4 SCALING (multi-cylinder layout search)
+========================================================================
+=== Virtual Gate 4 multi-cylinder scaling (simulation — not measured) ===
+  Ring sizes studied: X4, X6, X8, X10, X12, X14, X16
+  Tier mixes per ring: all micro/medium/large combinations summing to N
+  Rating profiles: phase1 (7.5/40/60 kW) + storyboard (20/78/120 kW)
+  Fuel accounting: charge-sustaining SoC (0.55)
+
+  ARCHITECTURE RULE: storyboard rings require >=1 medium (78 kW) cartridge.
+  All-micro homogeneous layouts are simulation artifacts (tier-1 eta 0.44
+  beats medium 0.41 on paper) — NOT valid ring recommendations.
+
+=== Three-tier thesis — phase1_open (AWD SUV) ===
+  Question: why not one cartridge size? Simulation compares tier depth.
+  ERS-passing layouts: 1-tier=0  2-tier=201  3-tier=554
+  Category               Layout     Depth   Rated   Hwy L   Mix L   ERS Shrt
+  ------------------------------------------------------------------------------
+  single_micro           14/0/0         1    105kW    4.31    2.22   8/9    2
+      -> homogeneous single-tier; fails ERS (8/9)
+  single_medium          0/4/0          1    160kW    4.62    2.40   7/9    1
+      -> homogeneous single-tier; fails ERS (7/9)
+  single_large           0/0/3          1    180kW    4.99    2.60   7/9    1
+      -> homogeneous single-tier; fails ERS (7/9)
+  two_tier               1/4/0          2    168kW    4.58    2.39   9/9    1
+  three_tier             1/2/1          3    148kW    4.58    2.42   9/9    1
+  reference_4_2_2        4/2/2          3    230kW    4.46    2.35   9/9    -
+      -> validated Phase-1 vehicle stack
+
+  Three-tier advantages (simulation):
+    1. No homogeneous single-tier passes all ERS checks (micro 8/9, medium 7/9, large 7/9).
+    2. Three-tier stacks pass full ERS (9/9 on reference 4/2/2); two-tier best is 1/4/0 (9/9).
+    3. Power shortfalls: two-tier=1 events vs reference three-tier=0 — large tier covers peak without oversizing cruise.
+    4. ATPE fills smallest tier first — three sizes = granular efficiency across the drive cycle, not one fixed displacement.
+
+=== Gate 4 virtual scaling — design-aligned phase1_open (AWD SUV) ===
+  Layouts evaluated: 965  ERS-passing: 755  design-aligned pass: 755
+  Layout       Ring Cyl   Rated   Hwy L   Mix L   ERS        Mix    Score
+  ------------------------------------------------------------------------------
+  1/2/1         X4   4    148kW    4.58    2.42   9/9      mixed    899.5
+  2/2/1         X5   5    155kW    4.54    2.40   9/9      mixed    897.9
+  1/1/2         X4   4    168kW    4.65    2.49   9/9      mixed    897.1
+  1/4/0         X5   5    168kW    4.58    2.39   9/9      mixed    896.5
+  3/2/1         X6   6    162kW    4.50    2.38   9/9      mixed    896.4
+  2/1/2         X5   5    175kW    4.58    2.47   9/9      mixed    896.1
+  4/3/0         X7   7    150kW    4.46    2.35   9/9      mixed    895.8
+  1/3/1         X5   5    188kW    4.58    2.40   9/9      mixed    895.5
+  (* = Phase-1 reference 4/2/2, + = canonical X12 target 0/12/0)
+
+=== Storyboard rings — highway-min vs all-three-tier (medium required) ===
+=== Sweet spot per ring — design-aligned storyboard_ring (AWD SUV) ===
+  Ring Hwy-min    3-tier       Hwy L 3-tier L   ERS  3t ERS
+  --------------------------------------------------------------------
+    X4 2/2/0      2/1/1         4.40     4.40 9/9     9/9
+       canonical all-medium 0/4/0: 4.62L ERS 7/9
+    X6 5/1/0      4/1/1         4.31     4.31 9/9     9/9
+       canonical all-medium 0/6/0: 4.62L ERS 7/9
+    X8 7/1/0      6/1/1         4.31     4.31 9/9     9/9
+       canonical all-medium 0/8/0: 4.62L ERS 7/9
+   X10 9/1/0      8/1/1         4.31     4.31 9/9     9/9
+       canonical all-medium 0/10/0: 4.62L ERS 7/9
+   X12 11/1/0     10/1/1        4.31     4.31 9/9     9/9
+       canonical all-medium 0/12/0: 4.62L ERS 7/9
+   X14 13/1/0     12/1/1        4.31     4.31 9/9     9/9
+       canonical all-medium 0/14/0: 4.62L ERS 7/9
+   X16 15/1/0     14/1/1        4.31     4.31 9/9     9/9
+       canonical all-medium 0/16/0: 4.62L ERS 7/9
+  Hwy-min = best design-aligned score; 3-tier = best with micro+medium+large.
+
+=== Gate 4 virtual scaling — design-aligned storyboard_ring (AWD SUV) ===
+  Layouts evaluated: 518  ERS-passing: 438  design-aligned pass: 370
+  Layout       Ring Cyl   Rated   Hwy L   Mix L   ERS        Mix    Score
+  ------------------------------------------------------------------------------
+  2/2/0         X4   4    196kW    4.40    2.35   9/9      mixed    900.6
+  5/1/0         X6   6    178kW    4.31    2.26   9/9      mixed    899.4
+  2/1/1         X4   4    238kW    4.40    2.33   9/9      mixed    898.5
+  4/2/0         X6   6    236kW    4.31    2.27   9/9      mixed    896.4
+  1/3/0         X4   4    254kW    4.51    2.36   9/9      mixed    895.5
+  4/1/1         X6   6    278kW    4.31    2.28   9/9      mixed    894.3
+  7/1/0         X8   8    218kW    4.31    2.23   9/9      mixed    893.4
+  1/2/1         X4   4    296kW    4.51    2.38   9/9      mixed    893.4
+  3/3/0         X6   6    294kW    4.33    2.31   9/9      mixed    893.2
+  1/1/2         X4   4    338kW    4.51    2.39   9/9      mixed    891.3
+  (* = Phase-1 reference 4/2/2, + = canonical X12 target 0/12/0)
+
+=== Phase-1 rings — design-aligned sweet spots ===
+=== Sweet spot per ring — design-aligned phase1_ring (AWD SUV) ===
+  Ring Hwy-min    3-tier       Hwy L 3-tier L   ERS  3t ERS
+  --------------------------------------------------------------------
+    X4 1/2/1      1/2/1         4.58     4.58 9/9     9/9
+    X6 3/2/1      3/2/1         4.50     4.50 9/9     9/9
+    X8 5/3/0      5/2/1         4.42     4.42 9/9     9/9
+   X10 8/1/1      8/1/1         4.33     4.33 9/9     9/9
+   X12 10/2/0     10/1/1        4.32     4.32 9/9     9/9
+   X14 13/0/1     12/1/1        4.31     4.31 9/9     9/9
+   X16 15/1/0     14/1/1        4.31     4.31 9/9     9/9
+  Hwy-min = best design-aligned score; 3-tier = best with micro+medium+large.
+
+=== Gate 4 virtual scaling — design-aligned phase1_ring (AWD SUV) ===
+  Layouts evaluated: 518  ERS-passing: 413  design-aligned pass: 413
+  Layout       Ring Cyl   Rated   Hwy L   Mix L   ERS        Mix    Score
+  ------------------------------------------------------------------------------
+  1/2/1         X4   4    148kW    4.58    2.42   9/9      mixed    899.5
+  1/1/2         X4   4    168kW    4.65    2.49   9/9      mixed    897.1
+  3/2/1         X6   6    162kW    4.50    2.38   9/9      mixed    896.4
+  2/4/0         X6   6    175kW    4.54    2.38   9/9      mixed    894.9
+  3/1/2         X6   6    182kW    4.52    2.45   9/9      mixed    894.9
+  4/0/2         X6   6    150kW    4.63    2.48   9/9      mixed    894.3
+  5/3/0         X8   8    158kW    4.42    2.34   9/9      mixed    894.3
+  2/3/1         X6   6    195kW    4.54    2.39   9/9      mixed    893.9
+  (* = Phase-1 reference 4/2/2, + = canonical X12 target 0/12/0)
+
+=== Global recommendation (AWD SUV, design-aligned, simulation only) ===
+  Validated three-tier vehicle: 4/2/2 (230 kW, ERS 9/9)
+    Highway CS fuel   : 4.46 L/100 km
+    Mixed cycle fuel  : 2.35 L/100 km
+
+  Best design-aligned : X4 2/2/0 (storyboard)
+    Tier mix          : mixed
+    Rated power       : 196 kW
+    Highway CS fuel   : 4.40 L/100 km
+    Mixed cycle fuel  : 2.35 L/100 km
+    ERS               : 9/9
+
+  Storyboard ring notes (design-aligned):
+    X4: 5/15 design-aligned pass; best=2/2/0 (mixed, 4.40 L/100km); canonical all-medium 0/4/0 fails ERS (7/9) — needs eta boost or tier blend
+    X6: 15/28 design-aligned pass; best=5/1/0 (mixed, 4.31 L/100km); canonical all-medium 0/6/0 fails ERS (7/9) — needs eta boost or tier blend
+    X8: 28/45 design-aligned pass; best=7/1/0 (mixed, 4.31 L/100km); canonical all-medium 0/8/0 fails ERS (7/9) — needs eta boost or tier blend
+    X10: 45/66 design-aligned pass; best=9/1/0 (mixed, 4.31 L/100km); canonical all-medium 0/10/0 fails ERS (7/9) — needs eta boost or tier blend
+    X12: 66/91 design-aligned pass; best=11/1/0 (mixed, 4.31 L/100km); canonical all-medium 0/12/0 fails ERS (7/9) — needs eta boost or tier blend
+    X14: 91/120 design-aligned pass; best=13/1/0 (mixed, 4.31 L/100km); canonical all-medium 0/14/0 fails ERS (7/9) — needs eta boost or tier blend
+    X16: 120/153 design-aligned pass; best=15/1/0 (mixed, 4.31 L/100km); canonical all-medium 0/16/0 fails ERS (7/9) — needs eta boost or tier blend
+    X12 production target 0/12/0: 936 kW rated, ERS 7/9 — hardware must hit medium-tier BTE
+
+  Why all-micro (N/0/0) ranked high before — and why it is wrong:
+    - Tier-1 table efficiency is 0.44 vs tier-2 medium 0.41 (fixed inputs).
+    - That lets micro pass brake-thermal ERS; all-medium 12/0/0 fails 7/9.
+    - Highway fuel on storyboard rings clusters near CS levels (~4.1–4.6 L/100km)
+      when layouts are oversized for steady cruise; the twin does not yet model
+    - PHOENIX ring design is medium-cartridge centric (78 kW), not all-micro.
+  Use design_aligned=true rows in CSV for architecture decisions.
+  Example X8: raw-best 8/0/0 (homogeneous_micro) vs design-aligned 7/1/0 (mixed)
+
+  DISCLAIMER: layout search uses tier-efficiency tables and does not
+  model ring phasing, NVH, or manufacturing. Prefix claims with
+  'simulation shows…'. Hardware sync validation still required.
+
+========================================================================
 GATE 1 CSV (spreadsheet)
 ========================================================================
   Regenerate:
     .venv\Scripts\python.exe scripts\export_gate1_matrix.py
   File:
     docs/evidence-pack/GATE1-VIRTUAL-BENCH-MATRIX.csv
+
+========================================================================
+GATE 4 CSV (layout sweep)
+========================================================================
+  Regenerate:
+    .venv\Scripts\python.exe scripts\export_gate4_scaling.py
+  File:
+    docs/evidence-pack/GATE4-VIRTUAL-SCALING.csv
 
 ========================================================================
 INTEGRITY CHECK

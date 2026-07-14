@@ -142,6 +142,13 @@ def apply_generator_cooling(cfg: "PhoenixV3Config", mode: str) -> "PhoenixV3Conf
     )
 
 
+def _fault_generator_derate(fault: TransientFault | None, cycle_index: int) -> float:
+    """Forced generator derate when ``generator_derate`` fault is active."""
+    if fault and fault.kind == "generator_derate" and cycle_index >= fault.trigger_cycle:
+        return 0.75
+    return 1.0
+
+
 class PhoenixV3Simulator:
     """Lumped opposed-piston cartridge integrator."""
 
@@ -571,7 +578,9 @@ class PhoenixV3Simulator:
                     wall_temp_k=thermal.wall_temp_k,
                     generator_temp_k=thermal.generator_temp_k,
                     valve_temp_k=thermal.valve_temp_k,
-                    generator_derate=thermal.generator_derate,
+                    generator_derate=thermal.generator_derate * _fault_generator_derate(
+                        fault, prev_cycle_index,
+                    ),
                     generator_effective_eff=thermal.generator_efficiency,
                     mean_generator_force_n=(
                         cycle_gen_force_sum / max(cycle_gen_force_n, 1)
@@ -657,7 +666,10 @@ class PhoenixV3Simulator:
                 p_sb *= bleed
 
             area = cfg.piston_area_m2
-            p_sensor = p_ctrl * (1.0 + cfg.tolerance_pressure_sensor_frac)
+            sensor_frac = cfg.tolerance_pressure_sensor_frac
+            if fault and fault.kind == "pressure_sensor_fault" and cycle_index >= fault.trigger_cycle:
+                sensor_frac = min(0.5, sensor_frac * 4.0)
+            p_sensor = p_ctrl * (1.0 + sensor_frac)
             f_gas_a = p_sensor * area
             f_gas_b = p_sensor * area
             relief_a = spring_end_stop_relief_gain(x_a_ctrl, cfg)
@@ -889,7 +901,9 @@ class PhoenixV3Simulator:
                 wall_temp_k=thermal.wall_temp_k,
                 generator_temp_k=thermal.generator_temp_k,
                 valve_temp_k=thermal.valve_temp_k,
-                generator_derate=thermal.generator_derate,
+                generator_derate=thermal.generator_derate * _fault_generator_derate(
+                    fault, prev_cycle_index,
+                ),
                 generator_effective_eff=thermal.generator_efficiency,
                 mean_generator_force_n=(
                     cycle_gen_force_sum / max(cycle_gen_force_n, 1)

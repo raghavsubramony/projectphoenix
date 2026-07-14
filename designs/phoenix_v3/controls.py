@@ -48,8 +48,11 @@ def valve_schedule(
         valves = ValveState(True, True, True, True)
         stage = "10_reset"
 
-    if fault and fault.kind == "stuck_intake_a" and cycle_index >= fault.trigger_cycle:
-        valves = ValveState(False, valves.intake_b, valves.exhaust_a, valves.exhaust_b)
+    if fault and cycle_index >= fault.trigger_cycle:
+        if fault.kind == "stuck_intake_a":
+            valves = ValveState(False, valves.intake_b, valves.exhaust_a, valves.exhaust_b)
+        elif fault.kind == "valve_failure":
+            valves = ValveState(False, False, False, False)
 
     return valves, stage
 

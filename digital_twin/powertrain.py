@@ -32,6 +32,8 @@ class StepResult:
     co2_kg: float
     battery_soc: float
     buffer_soc: float
+    active_cartridges: int = 0
+    dispatch_mode: str = ""
     imep_bar: float = 0.0
     knock_index: float = 0.0
     peak_pressure_bar: float = 0.0
@@ -44,7 +46,15 @@ class Powertrain:
     def __init__(self, cfg: TwinConfig, controller=None) -> None:
         self.cfg = cfg
         self.vehicle = Vehicle(cfg.vehicle)
-        self.atpe = ATPE(cfg.atpe)
+        ring_cfg = cfg.atpe.dynamic_ring
+        self._use_dynamic_ring = bool(ring_cfg and ring_cfg.enabled)
+        if self._use_dynamic_ring:
+            from .atpe_ring import DynamicRingATPE
+
+            self.ring_atpe = DynamicRingATPE(cfg.atpe)
+            self.atpe = self.ring_atpe
+        else:
+            self.atpe = ATPE(cfg.atpe)
         self.buffer = InertialBuffer(cfg.buffer)
         self.battery = Battery(cfg.battery)
         # The control policy is pluggable: any object exposing the same
@@ -57,6 +67,19 @@ class Powertrain:
         )
         self.time_s = 0.0
 
+    def _buffer_telemetry(self):
+        """Build ATPE Brain PCMRITMS telemetry from the live inertial buffer."""
+        from atpe_brain import BufferTelemetry
+
+        cfg = self.buffer.cfg
+        return BufferTelemetry(
+            soc=self.buffer.state_of_charge,
+            max_discharge_w=cfg.max_discharge_w,
+            max_charge_w=cfg.max_charge_w,
+            peak_transient_w=cfg.peak_transient_w,
+            soc_target=self.cfg.control.buffer_soc_target,
+        )
+
     def step(self, speed_ms: float, accel_ms2: float, grade_rad: float,
              dt_s: float) -> StepResult:
         # 1) Vehicle demand on the DC bus.
@@ -67,8 +90,24 @@ class Powertrain:
             demand_w, self.battery.soc, self.atpe.max_electric_w, dt_s,
             speed_ms=speed_ms, buffer_soc=self.buffer.state_of_charge)
 
-        # 3) ATPE generates toward the setpoint.
-        gen = self.atpe.generate(ctrl.gen_setpoint_w, dt_s)
+        # 3) ATPE generates toward the setpoint (Brain + PCMRITMS when dynamic).
+        if self._use_dynamic_ring:
+            gen = self.ring_atpe.generate(
+                ctrl.gen_setpoint_w,
+                dt_s,
+                bus_demand_w=demand_w,
+                buffer=self._buffer_telemetry(),
+                # Residual vs filtered demand so assist fires on spike-floor steps.
+                slow_setpoint_w=ctrl.filtered_demand_w,
+            )
+            burst_cap_w = (
+                self.ring_atpe.last_buffer_burst_w
+                if self.ring_atpe.last_buffer_burst_w is not None
+                else ctrl.buffer_burst_w
+            )
+        else:
+            gen = self.atpe.generate(ctrl.gen_setpoint_w, dt_s)
+            burst_cap_w = ctrl.buffer_burst_w
 
         # 4) Loop C: arbitrate the mismatch between demand and generation.
         mismatch_w = demand_w - gen.electric_w
@@ -80,7 +119,7 @@ class Powertrain:
         if mismatch_w > 0.0:
             # Deficit: buffer first (fastest), then battery, then flag shortfall.
             buffer_w = self.buffer.exchange(mismatch_w, dt_s,
-                                            burst_cap_w=ctrl.buffer_burst_w)
+                                            burst_cap_w=burst_cap_w)
             remaining = mismatch_w - buffer_w
             battery_w = self.battery.exchange(remaining, dt_s)
             shortfall_w = max(0.0, remaining - battery_w)
@@ -101,7 +140,15 @@ class Powertrain:
             surplus -= charged
             surplus_w = max(0.0, surplus)
 
+        if self._use_dynamic_ring:
+            self.ring_atpe.observe_buffer_exchange(buffer_w)
+
         self.time_s += dt_s
+        active_cartridges = 0
+        dispatch_mode = ""
+        if self._use_dynamic_ring:
+            active_cartridges = self.ring_atpe.last_active_count
+            dispatch_mode = self.ring_atpe.last_dispatch_mode
         return StepResult(
             time_s=self.time_s,
             speed_ms=speed_ms,
@@ -119,6 +166,8 @@ class Powertrain:
             co2_kg=gen.co2_kg,
             battery_soc=self.battery.soc,
             buffer_soc=self.buffer.state_of_charge,
+            active_cartridges=active_cartridges,
+            dispatch_mode=dispatch_mode,
             imep_bar=gen.imep_bar,
             knock_index=gen.knock_index,
             peak_pressure_bar=gen.peak_pressure_bar,
