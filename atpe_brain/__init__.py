@@ -11,7 +11,7 @@ from .digital_twin import DigitalTwin, TwinForecast, TwinPrediction
 from .fault_manager import FaultAction, FaultManager, FaultPlan
 from .fleet_learning import FleetSample, FleetWeightAdapter
 from .health_monitor import HealthMonitor, RingHealthReport
-from .hil import DeterministicEcuStub, HilHarness, HilStepResult
+from .hil import DeterministicEcuStub, HilHarness, HilStepResult, VehicleEcuAdapter
 from .optimizer import BrainCommands, OptimizationScore, Optimizer, OptimizerWeights
 from .pcmritms import BufferPlan, BufferTelemetry, PcmritmsCoordinator
 from .physics_twin import MultiHorizonPrediction, PhysicsTwinBackend, ProbeTwinBackend
@@ -64,4 +64,5 @@ __all__ = [
     "ThermalPlan",
     "TwinForecast",
     "TwinPrediction",
+    "VehicleEcuAdapter",
 ]

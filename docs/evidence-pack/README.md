@@ -15,7 +15,8 @@ digital twin. Do not hand-edit generated files — regenerate them after model c
 | `GATE6-ROTOR-PHASING.txt` | (impl note) | Closed-loop rotor coherence → surge_scale |
 | `GATE6-HEALTH-ASSIST.txt` | (impl note) | Health-aware spike threshold + demote |
 | `GATE6-ENDURANCE.txt` | `scripts/run_gate6_endurance_study.py` | Multi-pass SoC/health/thermal/R/A |
-| `ATPE-BRAIN-VV-001.txt` | `scripts/run_atpe_brain_vv_001.py` | HIL ECU stub verification |
+| `ATPE-BRAIN-VV-001.txt` | `scripts/run_atpe_brain_vv_001.py` | HIL against vehicle ECU runtime + stub |
+| `VEHICLE-ECU-RUNTIME.txt` | `scripts/run_vehicle_ecu_smoke.py` | Layer-2 ECU flash ID + watchdog prove |
 | `GATE6-FLEET-LEARNING.txt` | `scripts/run_gate6_fleet_learning_demo.py` | OptimizerWeights adaptation only |
 | `PCMRITMS-BRAIN-AB-STUDY.txt` | `scripts/run_pcmritms_brain_study.py` | Brain-PCMRITMS on/off fuel A/B (physical buffer always on) |
 | `PCMRITMS-BRAIN-COORD-PASS.txt` | (gate review) | **PASS** — fuelEqBuf +6–8%; tow/grade remaining closed |
@@ -28,6 +29,7 @@ digital twin. Do not hand-edit generated files — regenerate them after model c
 .venv\Scripts\python.exe scripts\export_gate4_scaling.py
 .venv\Scripts\python.exe scripts\run_pcmritms_brain_study.py --quick
 .venv\Scripts\python.exe scripts\run_pcmritms_stress_study.py --quick
+.venv\Scripts\python.exe scripts\run_vehicle_ecu_smoke.py
 .venv\Scripts\python.exe scripts\run_atpe_brain_vv_001.py
 .venv\Scripts\python.exe scripts\run_gate6_fleet_learning_demo.py
 .venv\Scripts\python.exe scripts\run_gate6_endurance_study.py --quick

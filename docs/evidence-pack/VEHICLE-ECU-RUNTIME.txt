@@ -1,0 +1,45 @@
+VEHICLE-ECU-RUNTIME
+Phoenix V3.1 — Layer-2 code that runs on the vehicle ECUs
+Date: 2026-07-15
+Flash ID: PHOENIX-V31-ECU-R1
+
+PURPOSE
+  Separate production ECU software from the ATPE Brain / digital twin.
+  Brain emits setpoints. ECU applies, rate-limits, watches deadlines,
+  and holds safe-state. Actuators never take AI commands without ECU ack.
+
+PACKAGE
+  ecu/                     Python reference runtime (source of truth)
+    identity.py            Flash ID + build fingerprint
+    bus.py                 Fixed message contract
+    domains.py             Motion / Combustion / Generator / Buffer laws
+    brain_bridge.py        BrainCommands → BrainSetpointFrame
+    runtime.py             VehicleEcuRuntime.tick() @ 10 ms
+    watchdog.py / safety.py
+  firmware/c/              C skeleton for microcontroller flash
+    ecu_bus.h              Same ModeCode + frame layout
+    ecu_runtime.c          Minimal slew + buffer clamp + safe-state
+
+CONTRACT
+  Slow loop (Brain → ECU):  BrainSetpointFrame  (~50–100 ms)
+  Fast loop (ECU → plant):  ActuatorCommand     (10 ms)
+  Latency budget:           ≤ 50 ms end-to-end apply
+  Watchdog:                 cycle overrun or brain timeout → hold last setpoints
+  Thermal inhibit:          wall > 205 °C disables slot locally
+
+PROVE IT
+  py -3 scripts/run_vehicle_ecu_smoke.py
+  py -3 tests/test_vehicle_ecu.py
+
+  Expected:
+    OVERALL=PASS
+    RUNNING_ON_ECU_FLASH=PHOENIX-V31-ECU-R1
+
+STACK POSITION
+  Layer 1  Physical plant          (cartridges, generator, PCMRITMS)
+  Layer 2  VehicleEcuRuntime       << THIS PACKAGE
+  Layer 3  ATPE Brain              (atpe_brain — supervisory only)
+
+NEXT (hardware)
+  Flash firmware/c onto Ring ECU MCU; map CAN IDs for BrainSetpointFrame /
+  ActuatorCommand; run ATPE-BRAIN-VV-001 against rack latency injectors.

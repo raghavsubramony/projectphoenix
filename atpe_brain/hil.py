@@ -1,7 +1,7 @@
-"""HIL verification stub — ATPE-BRAIN-VV-001.
+"""HIL verification — ATPE-BRAIN-VV-001.
 
-Simulates BrainCommands → deterministic ECU lag/noise → plant acknowledgment
-without hardware. Safety rule: AI never bypasses ECU acknowledgment.
+BrainCommands → vehicle ECU (``ecu.VehicleEcuRuntime`` or lag stub) → ack.
+Safety rule: AI never bypasses ECU acknowledgment / safe-state hold.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ class EcuAck:
     latency_s: float
     watchdog_ok: bool
     notes: str = ""
+    flash_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -34,7 +35,7 @@ class HilStepResult:
 
 
 class DeterministicEcuStub:
-    """First-order lag + integer cycle delay on enabled set."""
+    """First-order lag + integer cycle delay on enabled set (legacy stub)."""
 
     def __init__(self, *, latency_s: float = 0.02, scale_lag: float = 0.6) -> None:
         self.latency_s = latency_s
@@ -53,6 +54,7 @@ class DeterministicEcuStub:
                 latency_s=self.latency_s,
                 watchdog_ok=False,
                 notes="watchdog trip — holding last ECU setpoints",
+                flash_id="STUB",
             )
         self._mode = commands.mode
         self._indices = commands.enabled_indices
@@ -60,7 +62,6 @@ class DeterministicEcuStub:
             target = commands.load_scales.get(idx, 1.0)
             prev = self._scales.get(idx, target)
             self._scales[idx] = prev + self.scale_lag * (target - prev)
-        # Drop scales for disabled slots.
         self._scales = {i: self._scales[i] for i in self._indices if i in self._scales}
         return EcuAck(
             applied_mode=self._mode,
@@ -68,6 +69,54 @@ class DeterministicEcuStub:
             applied_scales=dict(self._scales),
             latency_s=self.latency_s,
             watchdog_ok=True,
+            flash_id="STUB",
+        )
+
+
+class VehicleEcuAdapter:
+    """Wraps ``ecu.VehicleEcuRuntime`` as the HIL apply path (preferred)."""
+
+    def __init__(self, *, settle_ticks: int = 15) -> None:
+        from ecu import VehicleEcuRuntime
+
+        self.runtime = VehicleEcuRuntime()
+        self.settle_ticks = settle_ticks
+        self.watchdog_ok = True
+        self.latency_s = 0.01
+
+    def apply(self, commands: BrainCommands) -> EcuAck:
+        from ecu import ModeCode
+
+        if not self.watchdog_ok:
+            self.runtime.watchdog.tripped = True
+            self.runtime.watchdog.reason = "hil_injected"
+        self.runtime.accept_brain(commands)
+        result = None
+        for _ in range(self.settle_ticks):
+            result = self.runtime.tick()
+        assert result is not None
+        mode_map = {
+            ModeCode.OFF: DispatchMode.OFF,
+            ModeCode.IDLE: DispatchMode.IDLE,
+            ModeCode.CITY: DispatchMode.CITY,
+            ModeCode.HIGHWAY: DispatchMode.HIGHWAY,
+            ModeCode.OVERTAKE: DispatchMode.OVERTAKE,
+            ModeCode.TRACK: DispatchMode.TRACK,
+        }
+        indices = self.runtime.enabled_indices(result)
+        scales = {
+            s.slot_index: s.load_fraction
+            for s in result.command.slots
+            if s.enable
+        }
+        return EcuAck(
+            applied_mode=mode_map.get(result.command.mode, DispatchMode.OFF),
+            applied_indices=indices,
+            applied_scales=scales,
+            latency_s=result.elapsed_s,
+            watchdog_ok=result.command.watchdog_ok,
+            notes=result.command.notes,
+            flash_id=result.flash_id,
         )
 
 
