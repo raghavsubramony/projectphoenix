@@ -33,6 +33,16 @@ This folder captures the engineering concept, analysis, and business case for an
 | [13-atpe-whitepaper.md](13-atpe-whitepaper.md) | ATPE whitepaper — internal engineering copy (links to twin) |
 | [14-phoenix-integrated-whitepaper.md](14-phoenix-integrated-whitepaper.md) | Integrated whitepaper — internal engineering copy (links to twin) |
 | [15-patent-portfolio.md](15-patent-portfolio.md) | **Patent portfolio assessment** — invention families, filing sequence, count estimates (not legal advice) |
+| [evidence-pack/](evidence-pack/) | Auto-generated pitch evidence + Gate 4/5/6 study dumps (`VEHICLE-ECU-RUNTIME.txt`, `GATE6-*.txt`, etc.) |
+
+## Runtime stack (beyond the twin)
+
+| Package | Role |
+|---------|------|
+| [`atpe_brain/`](../atpe_brain/) | Gate 6 supervisory brain (Layer 3) — setpoints only |
+| [`ecu/`](../ecu/) | Layer-2 vehicle ECU reference runtime |
+| [`firmware/c/`](../firmware/c/) | C skeleton matching the ECU bus contract |
+| [`designs/phoenix_v3/`](../designs/phoenix_v3/) | V3 ring plant; Gate 5 freeze candidate **4/6/2 X12** (not the Phase-1 **4/2/2** vehicle twin) |
 
 ## Digital Twin
 

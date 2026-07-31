@@ -34,6 +34,21 @@ class SingleCylinderPhysicsTest(unittest.TestCase):
         self.assertGreater(r.peak_pressure_pa, 100_000.0)
         self.assertEqual(len(r.trace.crank_deg), len(r.trace.pressure_pa))
         self.assertEqual(len(r.trace.volume_m3), len(r.trace.heat_release_j))
+        self.assertEqual(r.physics_backend, "surrogate")
+        self.assertFalse(r.physics_fallback)
+
+    def test_prefer_cantera_marks_fallback_when_unavailable(self) -> None:
+        inp = SingleCylinderInputs(
+            speed_rpm=2600.0,
+            load_fraction=0.65,
+            displacement_m3=300e-6,
+        )
+        r = simulate_1d_combustion(inp, prefer_cantera=True)
+        if r.physics_backend == "cantera":
+            self.assertFalse(r.physics_fallback)
+        else:
+            self.assertEqual(r.physics_backend, "surrogate")
+            self.assertTrue(r.physics_fallback)
 
     def test_free_piston_predicts_tdc_within_stroke(self) -> None:
         inp = SingleCylinderInputs(

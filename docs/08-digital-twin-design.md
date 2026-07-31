@@ -5,8 +5,10 @@ simulation that takes a drive cycle (speed + road grade vs. time) and reproduces
 the real powertrain — power flows, tier activation, buffer/battery states, fuel use, efficiency,
 and emissions.
 
-It is implemented in **pure Python (standard library only)** so it runs with no installation
-beyond Python ≥ 3.12, matching the project's zero-dependency `pyproject.toml`.
+It is implemented in **pure Python (standard library only)** for the core vehicle twin
+(`digital_twin/`), so Phase-1 headlines run with no installation beyond Python ≥ 3.12.
+The optional Phoenix V3 / ATPE Brain path (`designs/phoenix_v3/`, `atpe_brain/`) uses
+`numpy` (see `designs/requirements-design.txt`). Optional Cantera supports Gate 1 chemistry.
 
 ## Goals
 
@@ -18,32 +20,33 @@ beyond Python ≥ 3.12, matching the project's zero-dependency `pyproject.toml`.
 ## Package Layout
 
 ```
-digital_twin/
-├── __init__.py        Public API (build_default_twin, build_body_twins, run, ...)
-├── config.py          Dataclasses: TierSpec, ATPEConfig, BufferConfig, BatteryConfig,
-│                       VehicleConfig, TractionConfig, ControlConfig, TwinConfig,
-│                       BodyStyle (+ phase1_variants / phase2 builders)
-├── vehicle.py         Longitudinal road-load model → DC-bus power demand
-├── atpe.py            Three-tier free-piston generator + tier selection
-├── pcmritms.py        Inertial torque buffer (bounded kinetic reservoir)
-├── pcmritms_rotor.py  Whitepaper Appendix-A multi-ring torque-modulation model
-├── pcmritms_coupling.py  Derives the buffer's brief-burst rating from the rotor model
-├── battery.py         LFP pack with SoC + power limits
-├── controller.py      Unified 3-loop control law (mode, gen setpoint, arbitration)
-├── powertrain.py      Orchestrator: one step = vehicle → controller → sources
-├── drive_cycles.py    Synthetic urban / highway / towing / mixed cycles
-├── acceptance.py      ERS pass/fail checks + multi-body capability comparison
-├── fleet.py           Fleet harness: every body × every cycle, A/B delta tables
-├── single_cylinder.py Gate 1 combustion + free-piston surrogates; bench acceptance
-├── gate1_matrix.py    Virtual 48-cell bench matrix, CSV export, vehicle A/B
-├── gate4_scaling.py   Virtual multi-cylinder layout search + X12 ring sweep
-└── simulation.py      Runner + metrics aggregation + report
+digital_twin/                  # Core twin — pure stdlib (Phase-1 4/2/2 vehicle stack)
+├── __init__.py                Public API (build_default_twin, build_body_twins, run, ...)
+├── config.py                  Dataclasses + body variants
+├── vehicle.py                 Longitudinal road-load → DC-bus demand
+├── atpe.py                    Three-tier free-piston generator + energy-weighted tier fill
+├── atpe_ring.py               Dynamic ring ATPE (V3 bridge path)
+├── phoenix_v3_bridge.py       Calibration bridge to designs/phoenix_v3
+├── pcmritms.py / pcmritms_rotor.py / pcmritms_coupling.py
+├── battery.py / controller.py / powertrain.py
+├── drive_cycles.py / regulatory_cycles.py / ambient.py
+├── acceptance.py / fleet.py / simulation.py
+├── economics.py / sizing.py / montecarlo.py / summary.py
+├── coldstart.py / payload.py / phev.py / degradation.py
+├── ice_benchmark.py / graceful_degradation.py
+├── single_cylinder.py / gate1_matrix.py / gate4_scaling.py
+└── validation.py / misfire.py
+
+atpe_brain/                    # Gate 6 supervisory brain (Layer 3)
+ecu/ + firmware/c/             # Layer-2 vehicle ECU (Python ref + C skeleton)
+designs/phoenix_v3/            # V3 ring plant (Gate 5 freeze: 4/6/2 X12)
 ```
 
 > Regression invariants (rotor reproduction, per-body acceptance, fleet numbers, and the
 > rotor-coupling no-regression rule) are locked by
 > [tests/test_invariants.py](../tests/test_invariants.py) — run with
 > `python -m unittest discover -s tests -v`.
+> Headline lock: `verify.py` → **63 checks**; full suite **169 tests** (V3/brain need `numpy`).
 
 ## Data Flow (one timestep `dt`)
 
@@ -137,66 +140,35 @@ print(report(build_default_twin, phase1_targets()))            # ERS verdict
 
 ## Vehicle-Body Variants (same powertrain, different chassis)
 
-The Phase-1 powertrain (ATPE stack + inertial buffer + battery + 150 kW traction motor) is held
-fixed while only the **body** changes. `BodyStyle` in [config.py](../digital_twin/config.py)
-captures the chassis-dependent parameters (mass, $C_d$, frontal area, $C_{rr}$, wheel radius,
-driveline efficiency, aux load); `phase1_variants()` returns one `TwinConfig` per body, and
-`build_body_twins()` exposes fresh builders for the capability sims. The **AWD SUV is the primary
-reference**; the rest exist for comparison.
+The Phase-1 powertrain (ATPE stack + inertial buffer + battery) is held fixed while only the
+**body** changes. Heavy bodies (AWD SUV, Pickup) use a **160 kW** traction motor; light/mid
+bodies use **150 kW** — both clear class-appropriate ERS targets **9/9**. `BodyStyle` in
+[config.py](../digital_twin/config.py) captures chassis-dependent parameters; `phase1_variants()`
+returns one `TwinConfig` per body. The **AWD SUV is the primary reference**.
 
 `compare_bodies()` ([acceptance.py](../digital_twin/acceptance.py)) prints a side-by-side table.
-Representative output (same powertrain throughout):
-
-| Body | Mass (kg) | Peak (kW) | 0–100 (s) | Top (km/h) | Grade @100 (%) |
-|------|----------:|----------:|----------:|-----------:|---------------:|
-| **AWD SUV** (primary) | 2200 | 440 | 8.2 | 192.6 | 20.5 |
-| Sedan | 1650 | 440 | 5.8 | 228.6 | 30.0 |
-| Hatchback | 1400 | 440 | 4.8 | 226.8 | 36.0 |
-| Crossover | 1850 | 440 | 6.7 | 208.8 | 25.5 |
-| Pickup | 2500 | 440 | 9.9 | 169.2 | 16.5 |
-| Van / MPV | 2300 | 440 | 8.6 | 183.6 | 19.5 |
-
-The spread is pure body physics — lighter, slipperier bodies accelerate and climb harder on the
-identical engine, while the heavy, high-drag pickup/van trail the SUV. This is the same lever the
-ERS 0–100 discussion turns on (see [09-atpe-ers-and-insights.md](09-atpe-ers-and-insights.md) §9).
+Details and rationale live in [09-atpe-ers-and-insights.md](09-atpe-ers-and-insights.md) §9.
 
 ## ERS Acceptance Checks
 
 [acceptance.py](../digital_twin/acceptance.py) encodes the Project PHOENIX P1 targets as objective,
-simulation-backed pass/fail checks (peak/continuous power, motor torque, 0–100, top speed,
-gradeability, brake-thermal/generator/fuel-to-wheel efficiency). `report(build_twin, targets)`
-prints the verdict; the demo runs it for the SUV (currently **8/9**, with 0–100 the single honest
-FAIL for the heavy SUV body). Details and rationale live in
-[09-atpe-ers-and-insights.md](09-atpe-ers-and-insights.md) §9.
-
-**Per-body acceptance.** Each body is also judged against **class-appropriate** targets via
-`phase1_targets_for(body)` / `phase1_body_targets()`, evaluated by `report_bodies()`. The
-powertrain-level targets are identical (same engine); only the 0–100 / top-speed / gradeability
-targets reflect each vehicle class. With the shared 150 kW powertrain the lighter bodies pass 9/9,
-while the SUV (acceleration) and pickup (gradeability) land at 8/9 — an honest signal that those two
-bodies want a larger motor or the Phase-2 stack.
-
-**Recommended motor sizing.** `recommend_motor()` / `recommend_motors()` bisect the minimum motor
-power that clears a body's targets (peak power for 0–100 + gradeability; continuous for top speed,
-capped by engine output). The SUV and pickup need only **+10 kW (→160 kW)** to pass, while the
-lighter bodies show 25–65 kW of headroom — quantifying the spec/config tension exactly. See
-[09-atpe-ers-and-insights.md](09-atpe-ers-and-insights.md) §9.
-
-**Motor-size sweep study.** `sweep_grid()` / `sweep_motor()` evaluate every body across **60–250 kW
-in 10 kW steps** and print a pass/fail grid plus the minimum passing motor (and the binding target)
-per body. The comparative result: a two-motor family covers the lineup — ~150 kW for the light/mid
-bodies, 160 kW for the heavy SUV/pickup; nothing in Phase-1 needs more than 160 kW. See
-[09-atpe-ers-and-insights.md](09-atpe-ers-and-insights.md) §9.
+simulation-backed pass/fail checks. **All six bodies pass 9/9** against class-appropriate targets
+with the 150/160 kW motor family. `recommend_motor()` / `sweep_motor()` quantify that nothing in
+Phase-1 needs more than 160 kW. See [09-atpe-ers-and-insights.md](09-atpe-ers-and-insights.md) §9.
 
 ## Validation Strategy
 
 - **Sanity bounds:** efficiency between 0–48%, SoC within limits, no negative fuel — asserted in code.
 - **Energy closure:** sum of source energy ≈ demand energy + losses (residual reported).
 - **Cross-check vs. docs:** steady highway efficiency should land in the 43–47% band predicted in [03-integration-viability.md](03-integration-viability.md); towing economy in the 10–13 L/100km band from [05-investor-pitch-and-advantages.md](05-investor-pitch-and-advantages.md).
+- **Integrity seal:** `verify.py` re-derives locked headlines (63 checks) and runs the unit suite.
 
 ## Roadmap (twin fidelity tiers)
 
-1. **v0 (this):** quasi-steady power-flow twin, rule-based control. ✅
-2. **v1:** add thermal states (catalyst light-off, Tier-1 HCCI enable gate, cold-start window).
-3. **v2:** per-cylinder combustion phasing & NVH signature; buffer phase-coordination dynamics.
-4. **v3:** swap rule-based controller for a learned predictive coordinator; co-sim with a real WLTP/EPA cycle file.
+1. **v0** — quasi-steady power-flow twin, rule-based control. ✅
+2. **v1** — ambient / cold-start / payload / PHEV / ageing Moves (H–M). ✅
+3. **v2** — Gate 1 virtual bench + Gate 4 ring scaling; opt-in combustion path. ✅
+4. **v3** — Phoenix V3 mixed ring + ATPE Brain supervisory path + Layer-2 ECU. ✅ (software)
+5. **Next** — calibrate surrogates from measured Gate 1 rig CSV; physical HIL for Brain/ECU.
+
+Parallel hardware plan: [DEVELOPMENT-PLAYBOOK.md](DEVELOPMENT-PLAYBOOK.md) §6–7.

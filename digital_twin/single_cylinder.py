@@ -56,6 +56,8 @@ class SingleCylinderResult:
     ca50_deg: float
     peak_pressure_pa: float
     trace: PressureTrace
+    physics_backend: str = "surrogate"  # "surrogate" | "cantera"
+    physics_fallback: bool = False  # True when Cantera was preferred but unavailable
 
 
 @dataclass(frozen=True)
@@ -279,7 +281,7 @@ def _try_cantera_cycle(inp: SingleCylinderInputs) -> SingleCylinderResult | None
     """Optional Cantera-backed estimate; returns None if unavailable/failed."""
     try:
         import cantera as ct  # type: ignore
-    except Exception:
+    except ImportError:
         return None
 
     try:
@@ -306,18 +308,30 @@ def _try_cantera_cycle(inp: SingleCylinderInputs) -> SingleCylinderResult | None
             ca50_deg=base.ca50_deg,
             peak_pressure_pa=base.peak_pressure_pa * chem_factor,
             trace=base.trace,
+            physics_backend="cantera",
+            physics_fallback=False,
         )
-    except Exception:
-        return None
+    except Exception as exc:
+        cantera_error = getattr(ct, "CanteraError", ())
+        if isinstance(exc, (RuntimeError, ValueError, OSError, cantera_error)):
+            return None
+        raise
 
 
 def simulate_1d_combustion(inp: SingleCylinderInputs,
                            prefer_cantera: bool = True) -> SingleCylinderResult:
     """Compute a single-cylinder cycle using Cantera if available, else fallback."""
+    from dataclasses import replace
+
     if prefer_cantera:
         r = _try_cantera_cycle(inp)
         if r is not None:
             return r
+        return replace(
+            _surrogate_cycle(inp),
+            physics_backend="surrogate",
+            physics_fallback=True,
+        )
     return _surrogate_cycle(inp)
 
 

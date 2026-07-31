@@ -311,7 +311,7 @@ Hardware acceptance remains ≥5/6 Gate 1 checks on **measured** data — the JS
 
 ---
 
-## 7. Data schema (for twin calibration — future hook)
+## 7. Data schema (for twin calibration)
 
 When Rig γ produces data, log one row per steady-state point:
 
@@ -319,9 +319,18 @@ When Rig γ produces data, log one row per steady-state point:
 timestamp_utc,tier_index,speed_rpm,load_fraction,stroke_mm,peak_power_kw,electric_efficiency,imep_bar,peak_pressure_bar,bearing_runout_mm,core_temp_c,exhaust_temp_c,generator_efficiency,fuel_rate_g_s,notes
 ```
 
-**Planned twin hook (backlog):** `scripts/import_gate1_rig_csv.py` → update surrogates in `single_cylinder.py` → re-run `verify.py` and Gate scorecard measured-results log.
+**Twin residual hook (live):**
 
-Until that script exists, store raw runs under `data/rig/` (gitignored) and attach summary CSV to evidence pack as **measured** rows.
+```powershell
+# Pipeline prove-out (synthetic lab CSV from twin + noise)
+.venv\Scripts\python.exe scripts\import_gate1_rig_csv.py --synthesize data/rig/demo_synthetic.csv
+
+# Real DAQ export
+.venv\Scripts\python.exe scripts\import_gate1_rig_csv.py data/rig/run_001.csv
+```
+
+Implementation: `digital_twin/gate1_residuals.py` (schema + `measured − twin` residuals).
+Store raw runs under `data/rig/` (gitignored). Attach **measured** summary CSV to the evidence pack only after residual review — do not retune surrogates from synthetic rows.
 
 ---
 

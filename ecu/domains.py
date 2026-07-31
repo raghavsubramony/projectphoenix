@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from .bus import CartridgeSetpoint, SensorFrame
+from .limits import (
+    ECU_DC_BUS_CONTINUOUS_W,
+    ECU_DC_PRECHARGE_READY_V,
+    ECU_WALL_DERATE_C,
+)
 
 
 def _clamp(x: float, lo: float, hi: float) -> float:
@@ -67,7 +73,7 @@ class GeneratorEcu:
     """Generator force scale — slew + derate near thermal limit."""
 
     force_slew_per_s: float = 3.0
-    wall_derate_c: float = 195.0
+    wall_derate_c: float = ECU_WALL_DERATE_C
     _force: dict[int, float] | None = None
 
     def __post_init__(self) -> None:
@@ -78,15 +84,28 @@ class GeneratorEcu:
         setpoints: tuple[CartridgeSetpoint, ...],
         sensors: SensorFrame,
         dt_s: float,
+        *,
+        inhibited: set[int] | None = None,
     ) -> dict[int, float]:
         out: dict[int, float] = {}
         max_step = self.force_slew_per_s * max(dt_s, 1e-6)
+        inhibit = inhibited or set()
         assert self._force is not None
         for sp in setpoints:
-            target = sp.generator_force_scale if sp.enabled else 0.0
-            wall = sensors.slot_wall_temp_c[sp.slot_index] if sp.slot_index < len(sensors.slot_wall_temp_c) else 180.0
-            if wall > self.wall_derate_c:
+            if sp.slot_index in inhibit or not sp.enabled:
+                target = 0.0
+                wall = float("nan")
+            elif sp.slot_index < len(sensors.slot_wall_temp_c):
+                wall = sensors.slot_wall_temp_c[sp.slot_index]
+                target = sp.generator_force_scale
+            else:
+                # Missing sensor channel → inhibit (do not invent a nominal temp).
+                target = 0.0
+                wall = float("nan")
+            if math.isfinite(wall) and wall > self.wall_derate_c:
                 target *= max(0.5, 1.0 - (wall - self.wall_derate_c) / 20.0)
+            elif not math.isfinite(wall):
+                target = 0.0
             prev = self._force.get(sp.slot_index, 0.0)
             delta = _clamp(target - prev, -max_step, max_step)
             applied = _clamp(prev + delta, 0.0, 1.2)
@@ -102,6 +121,8 @@ class BufferEcu:
     continuous_w: float = 40_000.0
     peak_w: float = 120_000.0
     reserve_soc: float = 0.15
+    bus_continuous_w: float = ECU_DC_BUS_CONTINUOUS_W
+    precharge_ready_v: float = ECU_DC_PRECHARGE_READY_V
 
     def step(
         self,
@@ -111,10 +132,27 @@ class BufferEcu:
         precharge_w: float,
         soc: float,
         brain_safe: bool,
+        bus_voltage_v: float = 400.0,
     ) -> tuple[float, float, float]:
-        if not brain_safe or soc < self.reserve_soc:
-            return 0.0, 0.0, max(0.0, precharge_w)
+        if not brain_safe:
+            return 0.0, 0.0, 0.0
+        # Contactor / precharge gate: no assist until HV bus is ready.
+        if not math.isfinite(bus_voltage_v) or bus_voltage_v < self.precharge_ready_v:
+            if math.isfinite(soc) and soc < self.reserve_soc:
+                return 0.0, 0.0, _clamp(precharge_w, 0.0, self.continuous_w * 0.5)
+            return 0.0, 0.0, 0.0
+        if not math.isfinite(soc) or soc < self.reserve_soc:
+            # Low / invalid SoC: assist off; precharge only when SoC is finite.
+            if math.isfinite(soc) and soc < self.reserve_soc:
+                return 0.0, 0.0, _clamp(precharge_w, 0.0, self.continuous_w * 0.5)
+            return 0.0, 0.0, 0.0
         assist = _clamp(assist_w, 0.0, self.continuous_w)
         burst = _clamp(burst_w, 0.0, self.peak_w)
+        # Inverter continuous rating caps assist+burst together.
+        total = assist + burst
+        if total > self.bus_continuous_w:
+            scale = self.bus_continuous_w / total
+            assist *= scale
+            burst *= scale
         precharge = _clamp(precharge_w, 0.0, self.continuous_w * 0.5)
         return assist, burst, precharge

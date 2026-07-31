@@ -518,8 +518,21 @@ def build_app() -> type:
     return _Handler
 
 
-def serve(host: str = "127.0.0.1", port: int = 8000,
-          open_browser: bool = True) -> None:
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def serve(
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    open_browser: bool = True,
+    *,
+    allow_remote: bool = False,
+) -> None:
+    if host not in _LOOPBACK_HOSTS and not allow_remote:
+        raise SystemExit(
+            f"Refusing to bind {host!r} without --allow-remote "
+            "(exposes unauthenticated /api/simulate and /api/tests)."
+        )
     httpd = ThreadingHTTPServer((host, port), _Handler)
     url = f"http://{host}:{port}"
     print(f"Project Phoenix dashboard running at {url}")

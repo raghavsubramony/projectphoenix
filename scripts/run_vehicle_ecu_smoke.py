@@ -57,10 +57,12 @@ def main() -> int:
     ecu = VehicleEcuRuntime()
     assert ecu.flash_id == ECU_FLASH_ID
 
-    ecu.accept_brain(_city_frame())
     sensors = SensorFrame(buffer_soc=0.72)
     last = None
+    # Re-accept on a ~100 ms brain cadence so the 250 ms watchdog stays healthy.
     for i in range(25):
+        if i % 10 == 0:
+            ecu.accept_brain(_city_frame(seq=i + 1))
         last = ecu.tick(sensors)
     assert last is not None
 
@@ -73,17 +75,40 @@ def main() -> int:
     print(f"  safe_state={last.command.safe_state}")
     print(f"  notes={last.command.notes}")
 
-    # Watchdog hold path
+    # Watchdog fail-OFF path
     ecu.watchdog.tripped = True
     ecu.watchdog.reason = "smoke_trip"
     hold = ecu.tick(sensors)
-    print(f"  after_trip safe_state={hold.command.safe_state} assist={hold.command.buffer_assist_w:.0f}")
+    hold_enabled = ecu.enabled_indices(hold)
+    print(
+        f"  after_trip safe_state={hold.command.safe_state} "
+        f"assist={hold.command.buffer_assist_w:.0f} enabled={hold_enabled}"
+    )
+
+    # Controlled shutdown path (operator stop) — distinct from emergency OFF.
+    ecu.clear_faults()
+    for i in range(15):
+        if i % 5 == 0:
+            ecu.accept_brain(_city_frame(seq=100 + i))
+        ecu.tick(sensors)
+    ecu.request_controlled_shutdown("smoke_operator_stop")
+    sd = ecu.tick(sensors)
+    print(
+        f"  shutdown safe_mode={sd.command.safe_mode.name} "
+        f"ignition={[s.ignition_scale for s in sd.command.slots[:4]]}"
+    )
 
     ok = (
         last.command.watchdog_ok
         and set(enabled) == {0, 1, 2, 3}
         and hold.command.safe_state
+        and hold.command.safe_mode.name == "EMERGENCY_OFF"
         and hold.command.buffer_assist_w == 0.0
+        and hold.command.buffer_precharge_w == 0.0
+        and hold_enabled == ()
+        and hold.command.mode == ModeCode.OFF
+        and sd.command.safe_mode.name == "CONTROLLED_SHUTDOWN"
+        and all(s.ignition_scale == 0.0 for s in sd.command.slots)
     )
     print()
     print(f"OVERALL={'PASS' if ok else 'FAIL'}")

@@ -1,39 +1,48 @@
 VEHICLE-ECU-RUNTIME
 Phoenix V3.1 — Layer-2 code that runs on the vehicle ECUs
-Date: 2026-07-15
-Flash ID: PHOENIX-V31-ECU-R1
+Date: 2026-07-30
+Flash ID: PHOENIX-V31-ECU-R3
 
 PURPOSE
   Separate production ECU software from the ATPE Brain / digital twin.
   Brain emits setpoints. ECU applies, rate-limits, watches deadlines,
-  and holds safe-state. Actuators never take AI commands without ECU ack.
+  validates sensors, and fails safe. Actuators never take AI commands
+  without ECU ack.
 
 PACKAGE
   ecu/                     Python reference runtime (source of truth)
     identity.py            Flash ID + build fingerprint
-    bus.py                 Fixed message contract
+    limits.py              Shared thermal / watchdog / sensor / shutdown constants
+    bus.py                 Fixed message contract (ModeCode + SafeMode)
+    dtc.py                 Latched diagnostic trouble codes
+    sensors.py             Freshness + channel validity assessment
     domains.py             Motion / Combustion / Generator / Buffer laws
     brain_bridge.py        BrainCommands → BrainSetpointFrame
     runtime.py             VehicleEcuRuntime.tick() @ 10 ms
     watchdog.py / safety.py
   firmware/c/              C skeleton for microcontroller flash
-    ecu_bus.h              Same ModeCode + frame layout
-    ecu_runtime.c          Minimal slew + buffer clamp + safe-state
+    ecu_bus.h              Same ModeCode + frame layout + limits
+    ecu_runtime.c          Minimal slew + buffer clamp + EMERGENCY_OFF
 
 CONTRACT
   Slow loop (Brain → ECU):  BrainSetpointFrame  (~50–100 ms)
   Fast loop (ECU → plant):  ActuatorCommand     (10 ms)
-  Latency budget:           ≤ 50 ms end-to-end apply
-  Watchdog:                 cycle overrun or brain timeout → hold last setpoints
+  Latency budget:           ≤ 50 ms end-to-end apply (soft flag; does not trip)
+  Watchdog:                 cycle overrun or brain timeout → EMERGENCY_OFF (sticky)
+  Operator / Mode OFF:      CONTROLLED_SHUTDOWN ramp (~100 ms) then OFF
+  Sensors:                  stale > 50 ms → inhibit + P1101_SENSOR_STALE
   Thermal inhibit:          wall > 205 °C disables slot locally
+  Buffer:                   brain_safe=False cuts assist/burst/precharge
+  Recover:                  clear_faults() / ecu_reset_watchdog() required
 
 PROVE IT
   py -3 scripts/run_vehicle_ecu_smoke.py
-  py -3 tests/test_vehicle_ecu.py
+  py -3 -m unittest tests.test_vehicle_ecu tests.test_misfire -v
+  .venv-design\Scripts\python.exe tests\test_atpe_brain.py
 
   Expected:
     OVERALL=PASS
-    RUNNING_ON_ECU_FLASH=PHOENIX-V31-ECU-R1
+    RUNNING_ON_ECU_FLASH=PHOENIX-V31-ECU-R3
 
 STACK POSITION
   Layer 1  Physical plant          (cartridges, generator, PCMRITMS)
@@ -42,4 +51,5 @@ STACK POSITION
 
 NEXT (hardware)
   Flash firmware/c onto Ring ECU MCU; map CAN IDs for BrainSetpointFrame /
-  ActuatorCommand; run ATPE-BRAIN-VV-001 against rack latency injectors.
+  ActuatorCommand; run ATPE-BRAIN-VV-001 + HIL fault suite against rack
+  latency / lost-frame injectors.

@@ -1,0 +1,23 @@
+GATE1-RESIDUAL-HOOK
+Date: 2026-07-30
+
+PURPOSE
+  Compare Gate 1 lab summary CSV (GATE1-LAB-RIG-DESIGN §7) to the live twin
+  at the same (tier, speed, load) points. Residual = measured - twin.
+
+COMMANDS
+  .venv\Scripts\python.exe scripts\import_gate1_rig_csv.py --synthesize data/rig/demo_synthetic.csv
+  .venv\Scripts\python.exe scripts\import_gate1_rig_csv.py data/rig/<run>.csv
+
+CODE
+  digital_twin/gate1_residuals.py
+  tests/test_gate1_residuals.py
+
+DC-LINK (related vehicle path)
+  Opt-in HV bus / inverter limits: digital_twin/dc_link.py + with_dc_link()
+  Default Phase-1 config leaves dc_link disabled so verify.py fuel locks hold.
+  ECU precharge gate: bus_voltage_v < 360 V cuts assist/burst (P1301).
+
+DISCLAIMER
+  Synthetic CSV proves the import/residual pipeline only. Do not update
+  commercial claims or surrogate maps from synthetic rows.

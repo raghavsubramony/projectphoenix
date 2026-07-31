@@ -3,7 +3,7 @@
 *A plain-English status report for anyone who wants the full picture without reading code or engineering jargon.*
 
 **Last updated:** July 2026  
-**How we know nothing is broken:** run `.venv\Scripts\python.exe verify.py` — reports **PASS (58 checks + 135 tests)**; use `verify.py --quick` for a ~10 s smoke subset.
+**How we know nothing is broken:** run `.venv\Scripts\python.exe verify.py` — reports **PASS (63 checks + 169 tests)** when the design-stack deps are present (`numpy` for Phoenix V3 / ATPE Brain); use `verify.py --quick` for a ~10 s smoke subset (headline checks only).
 
 ---
 
@@ -68,7 +68,7 @@ These are the real-world milestones from the engineering requirements document:
 | **3** | Linear generator integrated | **Not started in hardware** — efficiency numbers are assumed, not measured |
 | **4** | Multiple cylinders working together | **Started in software** — virtual layout sweep + X12 ring scaling; **hardware not started** |
 | **5** | Whole vehicle integration | **Done in software** — six bodies, drive cycles, pass/fail targets |
-| **6** | AI optimisation | **Started in software** — learning study exists; not production-ready AI |
+| **6** | AI optimisation | **Advanced in software** — `atpe_brain/` supervisor + PCMRITMS coordinator PASS; Layer-2 `ecu/` runtime; not vehicle-certified |
 | **7** | Mechanical CAD and physical parts | **Not started** — diagrams exist; no 3D manufacturing models yet |
 
 **Bottom line for hardware:** we are roughly at **“Gate 5 in software only.”** The next big step is **bench prototypes and measured data**, not more spreadsheet modelling.
@@ -100,6 +100,7 @@ This is separate from the simulation Moves:
 7. **An executive summary table** at the start of `main.py` rolls up Moves A–M plus ICE benchmark and fault tolerance.
 8. **A virtual Gate 1 bench matrix** — 48 operating points (speed × load × tier), CSV export, uncertainty bands, and vehicle fuel traced to per-cartridge physics (`digital_twin/gate1_matrix.py`).
 9. **A virtual Gate 4 layout search** — every tier mix at **X4, X6, X8, X10, X12, X14, X16** under phase1 and storyboard kW profiles (`digital_twin/gate4_scaling.py`).
+10. **ATPE Brain + vehicle ECU (software)** — Gate 6 supervisory brain (`atpe_brain/`) and Layer-2 ECU reference runtime (`ecu/`, `firmware/c/`); Phoenix V3 ring plant in `designs/phoenix_v3/`.
 
 ### What the simulation has proven (in plain language)
 
@@ -129,16 +130,20 @@ This is separate from the simulation Moves:
 
 | Folder / file | What a non-engineer should know |
 |---------------|----------------------------------|
-| `digital_twin/` | The physics engine — vehicle, engine, battery, flywheel, controller |
+| `digital_twin/` | The physics engine — vehicle, engine, battery, flywheel, controller (Phase-1 **4/2/2** stack) |
 | `digital_twin/gate1_matrix.py` | Virtual single-cartridge bench — 48-cell test matrix, CSV export, investor report |
 | `digital_twin/gate4_scaling.py` | Virtual multi-cylinder layout search — best cartridge mix, X12 ring sweep, CSV |
+| `designs/phoenix_v3/` | Phoenix V3 ring plant (Gate 4/5 freeze candidate **4/6/2 X12** — different layer from the vehicle twin) |
+| `atpe_brain/` | Gate 6 supervisory AI brain (setpoints only — does not drive actuators directly) |
+| `ecu/` | Layer-2 vehicle ECU runtime — rate-limits, watchdog, fail-OFF safe-state |
+| `firmware/c/` | C skeleton for microcontroller flash (same bus contract as `ecu/`) |
 | `scripts/export_gate4_scaling.py` | Regenerate `docs/evidence-pack/GATE4-VIRTUAL-SCALING.csv` |
 | `scripts/export_evidence_pack.py` | One-command pitch/grant evidence baseline (text + CSV) |
-| `ml_study/` | Experiment where the controller **learns** from simulation data |
+| `ml_study/` | Move A imitation study — controller learns from simulation data |
 | `main.py` | Long demonstration that prints every study’s results |
 | `verify.py` | Green-light button: “are all headline numbers still correct?” |
-| `dashboard/` | Web page to run one simulation and see charts |
-| `tests/` | 130 automated tests that must pass |
+| `dashboard/` | Web page to run one simulation and see charts (`?gate1=1` for Gate 1 overlay) |
+| `tests/` | 169 automated tests that must pass (V3/brain path needs design-stack `numpy`) |
 | `docs/` | Concept papers, requirements, and plain-English guides |
 
 ---
@@ -168,10 +173,10 @@ Think of this as three tracks: **polish the software**, **deepen the model where
 
 ### Track A — Software polish (weeks, low cost)
 
-| Task | Why |
-|------|-----|
-| Add a **`--quick` smoke mode** to `verify.py` | Full verification takes ~45 seconds; CI can use `--quick` (~10 s) |
-| Document for stakeholders | This document + existing [PLAIN-ENGLISH-OVERVIEW.md](PLAIN-ENGLISH-OVERVIEW.md) |
+| Task | Status | Why |
+|------|--------|-----|
+| **`--quick` smoke mode** on `verify.py` | **Done** | Headline checks only; unit tests skipped (~10–15 s) |
+| Document for stakeholders | Ongoing | This document + [PLAIN-ENGLISH-OVERVIEW.md](PLAIN-ENGLISH-OVERVIEW.md) + [DEVELOPMENT-PLAYBOOK.md](DEVELOPMENT-PLAYBOOK.md) |
 
 *Most of this is communication and convenience, not new science.*
 
@@ -216,7 +221,7 @@ This is what turns a convincing model into a **credible product story**:
 If you are deciding what to do Monday morning:
 
 1. **Run `verify.py` before any demo or investor meeting** — it is the integrity seal.
-2. **Treat the executive summary (Moves A–I) as the elevator pitch** — it is the validated core story.
+2. **Treat the executive summary (Moves A–M / N) as the elevator pitch** — it is the validated core story.
 3. **Use Moves J–M when someone asks “yes, but what about winter / luggage / plugging in / old age?”** — those answers exist; they are just later in `main.py`.
 4. **Do not claim road-test or certification results** — say “simulation shows…” and point to `verify.py`.
 5. **For funding:** use the **virtual bench dossier** (`export_evidence_pack.py`, CSV matrix) plus the narrative that **measured** bench data is the Seed-phase deliverable.
@@ -229,7 +234,7 @@ If you are deciding what to do Monday morning:
 No special tools beyond Python:
 
 ```powershell
-# Full integrity check (55 headline checks + 130 tests)
+# Full integrity check (63 headline checks + 169 tests)
 .venv\Scripts\python.exe verify.py
 
 # Full story walkthrough (long; use --quick for a faster run)

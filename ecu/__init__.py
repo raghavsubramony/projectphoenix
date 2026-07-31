@@ -18,11 +18,23 @@ from .bus import (
     BrainSetpointFrame,
     CartridgeSetpoint,
     ModeCode,
+    SafeMode,
     SensorFrame,
 )
+from .dtc import DtcCode, DtcStore
 from .identity import ECU_FLASH_ID, EcuBuildManifest
+from .limits import (
+    ECU_BRAIN_TIMEOUT_S,
+    ECU_CONTROLLED_SHUTDOWN_S,
+    ECU_DC_BUS_CONTINUOUS_W,
+    ECU_DC_PRECHARGE_READY_V,
+    ECU_LATENCY_BUDGET_S,
+    ECU_SENSOR_STALE_S,
+    ECU_WALL_DERATE_C,
+    ECU_WALL_INHIBIT_C,
+)
 from .runtime import EcuTickResult, VehicleEcuRuntime
-from .safety import SafeState
+from .safety import ControlledShutdown, SafeState
 from .watchdog import Watchdog
 
 __all__ = [
@@ -30,10 +42,22 @@ __all__ = [
     "BrainSetpointFrame",
     "BrainToEcuBridge",
     "CartridgeSetpoint",
+    "ControlledShutdown",
+    "DtcCode",
+    "DtcStore",
+    "ECU_BRAIN_TIMEOUT_S",
+    "ECU_CONTROLLED_SHUTDOWN_S",
+    "ECU_DC_BUS_CONTINUOUS_W",
+    "ECU_DC_PRECHARGE_READY_V",
     "ECU_FLASH_ID",
+    "ECU_LATENCY_BUDGET_S",
+    "ECU_SENSOR_STALE_S",
+    "ECU_WALL_DERATE_C",
+    "ECU_WALL_INHIBIT_C",
     "EcuBuildManifest",
     "EcuTickResult",
     "ModeCode",
+    "SafeMode",
     "SafeState",
     "SensorFrame",
     "VehicleEcuRuntime",

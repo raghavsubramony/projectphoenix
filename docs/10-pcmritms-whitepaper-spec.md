@@ -83,7 +83,9 @@ not eliminate gyroscopic effects under all maneuvers.
 
 ## 6. Headline Simulation Result (Appendix A model)
 
-Lumped-parameter Python/NumPy model:
+Lumped-parameter model (source whitepaper may cite NumPy; **this repository’s twin is pure
+stdlib** — see [`pcmritms_rotor.py`](../digital_twin/pcmritms_rotor.py) and the publish copy
+[whitepapers/PCMRITMS-Whitepaper-v1.0.md](whitepapers/PCMRITMS-Whitepaper-v1.0.md)):
 - 3 rotors, $I=[0.12,\ 0.15,\ 0.10]$ kg·m²
 - mean speed 800 rad/s; sinusoidal speed modulation $A=80$, $\Omega=18$ rad/s, **120° phase separation**
 - fixed primary torque $\tau_{\text{primary}}=180$ N·m
@@ -99,6 +101,11 @@ Lumped-parameter Python/NumPy model:
 
 \*Instantaneous sum of per-rotor electrical power; a production design caps commands to
 per-inverter ratings (~30–35 kW continuous per rotor), which shortens the real boost window.
+
+> **Placement note:** This file is a **faithful extract** of the source whitepaper plus
+> twin-aligned vehicle-integration figures (e.g. ~140 kW brief burst, 50.2 kW surge).
+> For external distribution use [whitepapers/PCMRITMS-Whitepaper-v1.0.md](whitepapers/PCMRITMS-Whitepaper-v1.0.md).
+> Twin mapping detail: [11-pcmritms-twin-alignment.md](11-pcmritms-twin-alignment.md).
 
 ## 7. Stated Limitations of the Current Simulation
 - No multi-body/epicyclic dynamics or gear-mesh stiffness

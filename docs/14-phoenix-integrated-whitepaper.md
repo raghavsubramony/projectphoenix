@@ -7,7 +7,7 @@
 
 **Status:** Phase 1 simulation complete — hardware gates not cleared.  
 **Audience:** Investors, OEM partners, grant agencies, technical due diligence.  
-**Integrity:** `.venv\Scripts\python.exe verify.py` → PASS (58 checks + 135 tests).
+**Integrity:** `.venv\Scripts\python.exe verify.py` → PASS (63 checks + 169 tests).
 
 > **Disclaimer:** This document reports **simulation-validated** engineering projections.
 > No road-test, EPA/WLTP certification, or homologation claims are made. Prefix external
@@ -186,10 +186,14 @@ Full table with uncertainty bands: `docs/evidence-pack/EVIDENCE-BASELINE.txt`.
 | **3** | Linear generator | Parametric η_gen | Not started |
 | **4** | Multi-cylinder ring | X4–X16 tier-mix sweep + CSV | Not started |
 | **5** | Vehicle integration | **Done** — 6 bodies, dashboard | Not started |
-| **6** | AI optimisation | ML study started | Not started |
+| **6** | AI optimisation | ATPE Brain + ECU advanced (software); not certified | Not started |
 | **7** | CAD / packaging | Concept renders only | Not started |
 
-**Software position:** Gate 5 complete. **Hardware position:** no gate cleared.
+**Software position:** Gate 5 complete; Gate 6 advanced in software. **Hardware position:** no gate cleared.
+
+*Phase-1 locked headlines use the **4/2/2** (8-cylinder) vehicle twin. A separate Phoenix V3
+**4/6/2 X12** ring freeze candidate exists for production-ring studies — do not mix the two stacks
+when quoting fuel figures.*
 
 ---
 
@@ -219,7 +223,7 @@ Full table with uncertainty bands: `docs/evidence-pack/EVIDENCE-BASELINE.txt`.
 | No physical prototypes | Efficiency, noise, weight are modelled |
 | Combustion surrogate (default path) | Gate 1 physics is opt-in |
 | WLTP/EPA are reconstructions | Not copyrighted official traces |
-| AI controller is a study | Not ASIL-certified production software |
+| AI controller / ECU are software-validated | Not ASIL-certified production software |
 | PCMRITMS 75–85% round-trip | Labelled optimistic until bench measured |
 | IP not filed in repo | File provisionals before wide disclosure |
 

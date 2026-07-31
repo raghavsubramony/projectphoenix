@@ -509,6 +509,44 @@ def test_hil_vv_001_stub():
     h.ecu.watchdog_ok = False
     r2 = h.step(synthetic_commands(120_000.0))
     assert not r2.pass_
+    assert r2.ack.applied_indices == ()
+    assert r2.ack.applied_mode == DispatchMode.OFF
+
+
+def test_hil_fault_suite_real_world_cases():
+    from atpe_brain.hil import run_hil_fault_suite
+
+    results = run_hil_fault_suite()
+    assert len(results) == 3
+    failed = [r for r in results if not r.pass_]
+    assert not failed, "; ".join(f"{r.name}:{r.detail}" for r in failed)
+
+
+def test_supervisor_coolant_heat_is_in_watts():
+    """advance_coolant_bus expects watts; supervisor must not pre-multiply by dt."""
+    ring = _minimal_ring()
+    t0 = ring.coolant.temp_k
+    sup = ATPESupervisor(ring)
+    dt = 0.1
+    result = sup.cycle(120_000.0, dt)
+    assert result.commands.enabled_indices
+    heat_w = 0.0
+    for idx in result.commands.enabled_indices:
+        scale = result.commands.load_scales.get(idx, 1.0)
+        heat_w += (27_000.0 * scale / 27_000.0) * 8000.0
+    cfg0 = ring.slots[0].cfg
+    cool_out = cfg0.coolant_radiator_w_per_k * (t0 - cfg0.ambient_temp_k)
+    expected = max(
+        cfg0.ambient_temp_k,
+        t0 + (heat_w - cool_out) * dt / max(cfg0.coolant_thermal_mass_j_per_k, 1.0),
+    )
+    assert abs(ring.coolant.temp_k - expected) < 1e-6
+    buggy = max(
+        cfg0.ambient_temp_k,
+        t0
+        + (heat_w * dt - cool_out) * dt / max(cfg0.coolant_thermal_mass_j_per_k, 1.0),
+    )
+    assert abs(ring.coolant.temp_k - buggy) > 1e-3
 
 
 if __name__ == "__main__":
@@ -534,4 +572,6 @@ if __name__ == "__main__":
     test_health_aware_assist_lowers_spike_threshold()
     test_fleet_weight_adapter_raises_thermal()
     test_hil_vv_001_stub()
+    test_hil_fault_suite_real_world_cases()
+    test_supervisor_coolant_heat_is_in_watts()
     print("All ATPE Brain tests passed.")

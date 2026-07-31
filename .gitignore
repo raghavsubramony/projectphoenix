@@ -16,3 +16,11 @@ chatSessions/
 # Design tooling secrets (never commit)
 designs/@ffmpeg-installer/ffmpeg/.env
 **/.env
+
+# Large binary tooling / media (regenerate or keep local)
+**/ffmpeg.exe
+designs/@ffmpeg-installer/**/ffmpeg.exe
+*.exe~
+
+# Gate 1 lab DAQ drops (keep local; export summaries to evidence-pack)
+data/rig/

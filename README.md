@@ -31,6 +31,10 @@ optionally use Cantera for chemistry-informed estimates when installed.
 # One-command verification: re-derive every headline number from the live code,
 # check it against its validated value, and run the full test suite:
 .venv\Scripts\python.exe verify.py
+.venv\Scripts\python.exe verify.py --quick   # smoke subset (~10–15 s)
+
+# Interactive dashboard:
+.venv\Scripts\python.exe -m dashboard
 
 # Virtual Gate 1 bench matrix (CSV for spreadsheets + console report):
 .venv\Scripts\python.exe scripts\export_gate1_matrix.py
@@ -51,10 +55,12 @@ Optional Cantera install (for Gate 1 chemistry path):
 .venv\Scripts\python.exe -m pip install cantera
 ```
 
+Phoenix V3 / ATPE Brain tests need the design stack (`numpy` — see `designs/requirements-design.txt`).
+
 ## Executive summary — the one-table front door
 
 `main.py` opens with a single dashboard that gathers the load-bearing number
-from every analysis layer (Moves A–I) into one place
+from every analysis layer (Moves **A–M**, plus ICE benchmark Move N) into one place
 (`digital_twin/summary.py`, `build_executive_summary()`):
 
 ```
@@ -103,6 +109,9 @@ echoes the same validated numbers.
 | Gate 1 virtual bench matrix (48 cells, CSV, uncertainty) | `digital_twin/gate1_matrix.py` |
 | Gate 4 virtual layout search (X-ring tier mixes, CSV) | `digital_twin/gate4_scaling.py` |
 | Single-cartridge combustion + bench acceptance | `digital_twin/single_cylinder.py` |
+| ATPE Brain (Gate 6 supervisory setpoints) | `atpe_brain/` |
+| Vehicle ECU Layer-2 (watchdog / fail-OFF) | `ecu/`, `firmware/c/` |
+| Phoenix V3 ring plant (Gate 5 freeze 4/6/2 X12) | `designs/phoenix_v3/` |
 
 ## Validated invariants (locked by `tests/`)
 

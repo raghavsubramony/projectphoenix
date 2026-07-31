@@ -8,6 +8,7 @@ from .atpe import ATPE
 from .battery import Battery
 from .config import TwinConfig
 from .controller import UnifiedController
+from .dc_link import DcLink, DcLinkConfig
 from .pcmritms import InertialBuffer
 from .vehicle import Vehicle
 
@@ -38,6 +39,9 @@ class StepResult:
     knock_index: float = 0.0
     peak_pressure_bar: float = 0.0
     predicted_tdc_mm: float = 0.0
+    dc_link_voltage_v: float = 0.0
+    dc_link_limited: bool = False
+    inverter_clip_w: float = 0.0
 
 
 class Powertrain:
@@ -65,6 +69,8 @@ class Powertrain:
             battery_soc_target=cfg.battery.soc_target,
             battery_soc_ev_floor=cfg.battery.soc_ev_floor,
         )
+        link_cfg = cfg.dc_link or DcLinkConfig(enabled=False)
+        self.dc_link = DcLink(link_cfg)
         self.time_s = 0.0
 
     def _buffer_telemetry(self):
@@ -109,20 +115,29 @@ class Powertrain:
             gen = self.atpe.generate(ctrl.gen_setpoint_w, dt_s)
             burst_cap_w = ctrl.buffer_burst_w
 
+        gen_w, gen_clip_w = self.dc_link.limit_generation(gen.electric_w, dt_s)
+
         # 4) Loop C: arbitrate the mismatch between demand and generation.
-        mismatch_w = demand_w - gen.electric_w
+        mismatch_w = demand_w - gen_w
         buffer_w = 0.0
         battery_w = 0.0
         shortfall_w = 0.0
         surplus_w = 0.0
+        bus_clip_w = 0.0
 
         if mismatch_w > 0.0:
             # Deficit: buffer first (fastest), then battery, then flag shortfall.
-            buffer_w = self.buffer.exchange(mismatch_w, dt_s,
+            # DC-link caps how much storage may discharge onto the bus.
+            desired_storage = mismatch_w
+            allowed_storage, storage_clip = self.dc_link.limit_storage_discharge(
+                desired_storage, dt_s, generation_on_bus_w=gen_w,
+            )
+            bus_clip_w += storage_clip
+            buffer_w = self.buffer.exchange(allowed_storage, dt_s,
                                             burst_cap_w=burst_cap_w)
-            remaining = mismatch_w - buffer_w
+            remaining = allowed_storage - buffer_w
             battery_w = self.battery.exchange(remaining, dt_s)
-            shortfall_w = max(0.0, remaining - battery_w)
+            shortfall_w = max(0.0, mismatch_w - buffer_w - battery_w)
         elif mismatch_w < 0.0:
             # Surplus: refill buffer toward target first, then charge battery.
             surplus = -mismatch_w
@@ -130,18 +145,32 @@ class Powertrain:
                 0.0,
                 self.cfg.control.buffer_soc_target - self.buffer.state_of_charge,
             )
-            # Only divert to the buffer if it is below its keep-full target.
             if buffer_headroom_target > 0.0:
-                absorbed = -self.buffer.exchange(-surplus, dt_s)
+                charge_cap = self.dc_link.limit_storage_charge(surplus, dt_s)
+                refused = max(0.0, surplus - charge_cap)
+                bus_clip_w += refused
+                absorbed = -self.buffer.exchange(-charge_cap, dt_s)
                 buffer_w = -absorbed
                 surplus -= absorbed
-            charged = -self.battery.exchange(-surplus, dt_s)
+            charge_cap = self.dc_link.limit_storage_charge(surplus, dt_s)
+            refused = max(0.0, surplus - charge_cap)
+            bus_clip_w += refused
+            charged = -self.battery.exchange(-charge_cap, dt_s)
             battery_w = -charged
             surplus -= charged
             surplus_w = max(0.0, surplus)
 
         if self._use_dynamic_ring:
             self.ring_atpe.observe_buffer_exchange(buffer_w)
+
+        telem = self.dc_link.observe(
+            gen_w=gen_w,
+            buffer_w=buffer_w,
+            battery_w=battery_w,
+            gen_clip_w=gen_clip_w,
+            bus_clip_w=bus_clip_w,
+            dt_s=dt_s,
+        )
 
         self.time_s += dt_s
         active_cartridges = 0
@@ -153,7 +182,7 @@ class Powertrain:
             time_s=self.time_s,
             speed_ms=speed_ms,
             demand_w=demand_w,
-            generation_w=gen.electric_w,
+            generation_w=gen_w,
             buffer_w=buffer_w,
             battery_w=battery_w,
             shortfall_w=shortfall_w,
@@ -172,4 +201,7 @@ class Powertrain:
             knock_index=gen.knock_index,
             peak_pressure_bar=gen.peak_pressure_bar,
             predicted_tdc_mm=gen.predicted_tdc_mm,
+            dc_link_voltage_v=telem.voltage_v,
+            dc_link_limited=telem.limited,
+            inverter_clip_w=telem.gen_clip_w + telem.bus_clip_w,
         )

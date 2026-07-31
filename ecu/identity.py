@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 # Bump when the vehicle-facing ECU contract changes.
-ECU_FLASH_ID = "PHOENIX-V31-ECU-R1"
+ECU_FLASH_ID = "PHOENIX-V31-ECU-R3"
 ECU_INTERFACE_VERSION = "1.0.0"
 ECU_CYCLE_MS = 10
 ECU_SLOT_COUNT = 12

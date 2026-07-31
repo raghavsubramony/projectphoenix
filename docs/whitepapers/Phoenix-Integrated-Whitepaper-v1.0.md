@@ -201,11 +201,15 @@ performance targets (acceleration, top speed, 20% gradeability, efficiency).
 | 3 | Linear generator | Parametric model | Not started |
 | 4 | Multi-cartridge ring | X4–X16 layout study | Not started |
 | 5 | Vehicle integration | **Complete** (6 bodies) | Not started |
-| 6 | AI optimisation | Study complete | Not started |
+| 6 | AI optimisation | Supervisory brain + ECU (software) | Not started |
 | 7 | CAD / packaging | Concept renders | Not started |
 
-**Software position:** vehicle integration gate complete.  
+**Software position:** vehicle integration complete; Gate 6 advanced in software (not certified).  
 **Hardware position:** no gate cleared.
+
+*Reference vehicle figures use the Phase-1 **4/2/2** eight-cartridge stack (~230 kW). A separate
+production-ring study freezes a **4/6/2** twelve-cartridge layout (~313 kW) — different layer;
+do not equate the two when quoting fuel economy.*
 
 ---
 

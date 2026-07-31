@@ -149,5 +149,17 @@ class HttpApiTest(unittest.TestCase):
             server._TEST_RUN_LOCK.release()
 
 
+class BindPolicyTest(unittest.TestCase):
+    def test_refuse_non_loopback_without_allow_remote(self) -> None:
+        with self.assertRaises(SystemExit) as ctx:
+            server.serve(host="0.0.0.0", port=9, open_browser=False)
+        self.assertIn("allow-remote", str(ctx.exception))
+
+    def test_loopback_hosts_are_allowed(self) -> None:
+        for host in ("127.0.0.1", "localhost", "::1"):
+            # serve() blocks; only validate the guard accepts these hosts.
+            self.assertIn(host, server._LOOPBACK_HOSTS)
+
+
 if __name__ == "__main__":
     unittest.main()

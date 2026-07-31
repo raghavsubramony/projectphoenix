@@ -21,6 +21,14 @@ class ModeCode(IntEnum):
     TRACK = 5
 
 
+class SafeMode(IntEnum):
+    """Plant protection mode — orthogonal to dispatch ModeCode."""
+
+    NORMAL = 0
+    CONTROLLED_SHUTDOWN = 1  # ramp load off, then kill ignition
+    EMERGENCY_OFF = 2  # immediate fail-OFF (watchdog / hard fault)
+
+
 @dataclass(frozen=True)
 class CartridgeSetpoint:
     """Per-slot authority from the ATPE Brain."""
@@ -49,17 +57,28 @@ class BrainSetpointFrame:
 
 @dataclass
 class SensorFrame:
-    """Fast-loop sensor snapshot for one ECU cycle (10 ms)."""
+    """Fast-loop sensor snapshot for one ECU cycle (10 ms).
+
+    ``stamped_t_s is None`` means the sample is taken on the current ECU tick
+    (age 0). Set an older stamp in HIL to model bus/DAQ delay.
+    """
 
     t_s: float = 0.0
+    stamped_t_s: float | None = None
+    valid: bool = True
     bus_demand_w: float = 0.0
+    bus_voltage_v: float = 400.0
     buffer_soc: float = 0.7
+    buffer_soc_valid: bool = True
     buffer_w: float = 0.0
     coolant_temp_k: float = 293.15
     slot_wall_temp_c: list[float] = field(default_factory=lambda: [180.0] * 12)
+    wall_temp_valid: list[bool] = field(default_factory=lambda: [True] * 12)
     slot_gen_temp_c: list[float] = field(default_factory=lambda: [120.0] * 12)
     slot_position_mm: list[float] = field(default_factory=lambda: [0.0] * 12)
+    position_valid: list[bool] = field(default_factory=lambda: [True] * 12)
     slot_pressure_bar: list[float] = field(default_factory=lambda: [1.0] * 12)
+    pressure_valid: list[bool] = field(default_factory=lambda: [True] * 12)
 
 
 @dataclass(frozen=True)
@@ -88,3 +107,5 @@ class ActuatorCommand:
     watchdog_ok: bool
     latency_budget_ok: bool
     notes: str = ""
+    safe_mode: SafeMode = SafeMode.NORMAL
+    active_dtcs: tuple[str, ...] = ()

@@ -31,3 +31,7 @@ The repository also keeps engineering-linked versions with code traceability:
 - `docs/14-phoenix-integrated-whitepaper.md` — links to twin modules (internal)
 
 Use the files in **this folder** for investor emails, data rooms, and public disclosure.
+
+**Keep distinct:** Phase-1 vehicle twin figures (**4/2/2**, ~230 kW, highway 4.46 L/100 km) vs
+Phoenix V3 production-ring freeze (**4/6/2 X12**, ~313 kW) — the latter is documented in the
+evidence pack, not as a replacement for locked vehicle fuel headlines.

@@ -43,10 +43,10 @@ Regenerate anytime:
 | AWD SUV highway fuel (charge-sustaining) | ~4.46 L/100km | `verify.py` |
 | vs conventional 2.0 L turbo (same car, mixed) | ~28% less fuel | Move N / `ice_benchmark.py` |
 | Battery replacements over vehicle life | 0 | Move D |
-| Winter–summer fuel swing | ~14–23% | Move H |
+| Winter–summer fuel swing | ~12–23% | Move H |
 | One cylinder offline — still passes targets | 18/18 scenarios | `graceful_degradation.py` |
 | Six vehicle bodies — performance targets | 9/9 each | `acceptance.py` |
-| Integrity gate | 58 checks + 135 tests PASS | `verify.py` |
+| Integrity gate | 63 checks + 169 tests PASS | `verify.py` |
 
 ### Honest limits (say these proactively)
 
@@ -125,7 +125,7 @@ Use this worksheet to see **where you are** vs **what Seed needs**. Copy the tab
 
 **Solution:** Series hybrid with (1) tiered free-piston generator (ATPE), (2) millisecond inertial buffer (PCMRITMS), (3) small long-life battery — software-defined power matching.
 
-**Traction (simulation):** Six vehicle types pass performance targets; ~28% fuel saving vs 2.0 L turbo on identical routes; fault-tolerant in model; 46 automated checks PASS.
+**Traction (simulation):** Six vehicle types pass performance targets; ~28% fuel saving vs 2.0 L turbo on identical routes; fault-tolerant in model; `verify.py` PASS (63 checks + 169 tests).
 
 **Ask:** $X for Gate 1 single-cartridge lab rig + Y months runway (or: partnership with engine test lab).
 
@@ -271,6 +271,8 @@ Improve the twin **in service of Gate 1–3**, not as a substitute for building 
 | 3 | **Calibration hook** — load measured CSV → update surrogates → `verify.py` | Backlog | After first rig run |
 | 4 | Free-piston stability envelope | **Started** | Gate 2 |
 | 5 | Generator efficiency from bench η | Backlog | Gate 3 |
+| 6 | **ATPE Brain + PCMRITMS coordinator** (`atpe_brain/`) | **Done in software** | Gate 6 — see `GATE6-BACKLOG.txt` |
+| 6 | **Vehicle ECU Layer-2** (`ecu/`, `firmware/c/`) | **Done in software** | Actuator path; fail-OFF safe-state |
 | 6 | Driver intent layer | Backlog | Gate 6 / product |
 | 7 | Dashboard: rig vs model overlay | Partial (`?gate1=1`) | Investor demo |
 

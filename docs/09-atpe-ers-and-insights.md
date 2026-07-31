@@ -15,14 +15,21 @@ Cross-references: [01-atpe-concept.md](01-atpe-concept.md),
 measurements land — software-only progress does not advance a hardware gate.*
 
 **Last updated:** July 2026  
-**Integrity check:** `.venv\Scripts\python.exe verify.py` → PASS (58 checks + 135 tests)
+**Integrity check:** `.venv\Scripts\python.exe verify.py` → PASS (63 checks + 169 tests)
 
 ### Summary
 
 | Track | Position |
 |-------|----------|
-| **Software** | **Gate 5 complete**; Gates 1–4 and 6 have partial digital stand-ins; Gate 7 is concept-only |
+| **Software** | **Gate 5 complete** (vehicle twin); Gates 1–4 have virtual stand-ins; **Gate 6 advanced** (`atpe_brain/` + `ecu/`); Gate 7 is concept-only |
 | **Hardware** | **No gate cleared** — critical path is Gate 1 lab rig (Seed phase, §Seed-phase bench test matrix) |
+
+### Two stack layers (do not mix in pitch materials)
+
+| Layer | Layout | Peak / efficiency | Where |
+|-------|--------|-------------------|-------|
+| **Phase-1 vehicle twin** (locked headlines) | **4 micro + 2 medium + 2 large** (8 cyl) | ~230 kW; highway CS **4.46 L/100 km** | `digital_twin/` |
+| **Phoenix V3 production freeze candidate** | **4 micro + 6 medium + 2 large** (X12) | ~313 kW ring, ~54.7% ring efficiency | `designs/phoenix_v3/` + `GATE5-PRODUCTION-FREEZE.txt` |
 
 ### Gate-by-gate
 
@@ -31,15 +38,27 @@ measurements land — software-only progress does not advance a hardware gate.*
 | **1** | Single-cylinder twin | **Partial** — 48-cell virtual bench + opt-in physics; combustion surrogate | **Not started** | [`gate1_matrix.py`](../digital_twin/gate1_matrix.py), [`single_cylinder.py`](../digital_twin/single_cylinder.py), `gate1_bench_at_load()` |
 | **2** | Stable free-piston operation | **Partial** — RPM-linked cycle timing, bearing-runout surrogate | **Not started** | `simulate_free_piston(speed_rpm=…)`; no stability envelope or bearing controller |
 | **3** | Linear generator integration | **Partial** — parametric η_gen, bench kW estimate | **Not started** | `ATPEConfig.generator_efficiency`; no EM FEA |
-| **4** | Multi-cylinder synchronization | **Partial** — X4–X16 tier-mix sweep + CSV (`gate4_scaling.py`) | **Not started** | `run_ring_size_study()`, `run_full_gate4_study()`, §Virtual Gate 4 |
-| **5** | Vehicle integration | **Done** — six bodies, cycles, ERS 9/9, dashboard | **Not started** | [`acceptance.py`](../digital_twin/acceptance.py), `verify.py`, `python -m dashboard` |
-| **6** | AI optimization | **Started** — imitation study, not production-ready | **Not started** | [`ml_study/`](../ml_study/) (~94.5 % tier accuracy; closed-loop energy-bound) |
+| **4** | Multi-cylinder synchronization | **Partial** — X4–X16 tier-mix sweep + CSV; V3 mixed-ring plant | **Not started** | `gate4_scaling.py`, `designs/phoenix_v3/`, §Virtual Gate 4 |
+| **5** | Vehicle integration | **Done** — six bodies, cycles, ERS 9/9, dashboard; V3 Gate-5 freeze candidate | **Not started** | [`acceptance.py`](../digital_twin/acceptance.py), `verify.py`, `GATE5-PRODUCTION-FREEZE.txt` |
+| **6** | AI optimization | **Advanced** — ATPE Brain supervisor + PCMRITMS coordinator PASS; Layer-2 ECU; HIL stub only | **Not started** | [`atpe_brain/`](../atpe_brain/), [`ecu/`](../ecu/), `GATE6-*.txt`, `PCMRITMS-BRAIN-COORD-PASS.txt`; Move A study still in [`ml_study/`](../ml_study/) |
 | **7** | Mechanical design & CAD | **Concept only** — Blender hero, storyboard, `.glb` | **Not started** | [`designs/design.py`](../designs/design.py); no manufacturing STEP or packaging study |
 
 **Status key:** *Done* = simulation meets gate intent and is locked by tests. *Partial* = useful
-model or plan exists but gate intent not fully met. *Started* = exploratory work only.
+model or plan exists but gate intent not fully met. *Advanced* = substantial software path with
+evidence pack sign-off, still not production/certified. *Started* = exploratory work only.
 *Concept only* = visuals or narrative, not engineering release. Hardware *Not started* = no
 measured sign-off on that gate.
+
+### Runtime stack (software Layers 1–3)
+
+| Layer | Role | Package |
+|------:|------|---------|
+| **1** | Physical plant model (cartridges, generator, PCMRITMS) | `designs/phoenix_v3/`, `digital_twin/` |
+| **2** | Vehicle ECU — rate-limits, watchdog, fail-OFF | [`ecu/`](../ecu/), [`firmware/c/`](../firmware/c/) |
+| **3** | ATPE Brain — supervisory setpoints only | [`atpe_brain/`](../atpe_brain/) |
+
+Brain emits setpoints; ECU applies them. Actuators never take AI commands without ECU acknowledgement.
+See `docs/evidence-pack/VEHICLE-ECU-RUNTIME.txt`.
 
 ### Storyboard → Gate mapping (PHOENIX-X12)
 
@@ -828,7 +847,7 @@ Two findings:
 1. **Fuel is a U-shape with its floor at the comfort point, and cold is the worse end.** The minimum
    sits near +20 C; both colder and hotter cost fuel, but cold costs more because denser air **and**
    cabin heating stack on top of each other, whereas a hot day's thinner air partly offsets the
-   air-conditioning. The cold-to-hot swing is **14-23%** of the reference figure depending on body -
+   air-conditioning. The cold-to-hot swing is **12-23%** of the reference figure depending on body -
    a real, quotable seasonal penalty that the single-temperature numbers hide. (The lighter, more
    efficient bodies show the *largest percentage* swing because a fixed ~1.9 kW HVAC load is a bigger
    slice of their smaller baseline demand.)

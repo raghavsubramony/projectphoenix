@@ -28,9 +28,21 @@ from .config import (
     phase1_config_for,
     phase1_variants,
     with_battery_thermal,
+    with_dc_link,
     with_gate1,
     with_phoenix_v3,
     phase2_config,
+)
+from .dc_link import DcLink, DcLinkConfig, DcLinkTelemetry, default_phase1_dc_link
+from .gate1_residuals import (
+    GATE1_RIG_CSV_COLUMNS,
+    Gate1RigRow,
+    ResidualReport,
+    compare_row_to_twin,
+    read_gate1_rig_csv,
+    run_gate1_residual_report,
+    synthesize_gate1_rig_csv,
+    write_gate1_rig_csv,
 )
 from .single_cylinder import (
     SingleCylinderInputs,
@@ -217,6 +229,13 @@ from .gate1_matrix import (
     DEFAULT_LOAD_FRACTIONS,
     SWEET_SPOT_TIER_INDEX,
 )
+from .misfire import (
+    MisfireCoverageResult,
+    MisfireSpec,
+    apply_misfire,
+    gate1_bench_with_misfire,
+    run_misfire_coverage,
+)
 from .gate4_scaling import (
     CylinderLayout,
     Gate4LayoutResult,
@@ -270,7 +289,20 @@ __all__ = [
     "phase1_config_for",
     "phase1_variants",
     "with_battery_thermal",
+    "with_dc_link",
     "with_gate1",
+    "DcLink",
+    "DcLinkConfig",
+    "DcLinkTelemetry",
+    "default_phase1_dc_link",
+    "GATE1_RIG_CSV_COLUMNS",
+    "Gate1RigRow",
+    "ResidualReport",
+    "compare_row_to_twin",
+    "read_gate1_rig_csv",
+    "run_gate1_residual_report",
+    "synthesize_gate1_rig_csv",
+    "write_gate1_rig_csv",
     "phase2_config",
     "SingleCylinderInputs",
     "SingleCylinderResult",
@@ -417,6 +449,11 @@ __all__ = [
     "write_gate1_matrix_csv",
     "GATE1_MATRIX_CSV_COLUMNS",
     "DEFAULT_SPEED_RPM",
+    "MisfireCoverageResult",
+    "MisfireSpec",
+    "apply_misfire",
+    "gate1_bench_with_misfire",
+    "run_misfire_coverage",
     "DEFAULT_LOAD_FRACTIONS",
     "SWEET_SPOT_TIER_INDEX",
     "CylinderLayout",

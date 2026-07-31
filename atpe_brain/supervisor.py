@@ -214,11 +214,16 @@ class ATPESupervisor:
         if not self.ring.shared_coolant or not commands.enabled_indices:
             return
         probe_map = self.ring.probe_by_index()
+        # Approximate reject heat (W) at load scale; advance_coolant_bus
+        # multiplies by duration_s itself — do not pre-scale by dt.
+        _REJECT_HEAT_W_AT_NOMINAL = 8000.0
         heat_w = 0.0
         for idx in commands.enabled_indices:
             cache = probe_map[idx]
             scale = commands.load_scales.get(idx, 1.0)
-            heat_w += (cache.nominal_power_w * scale / max(cache.nominal_power_w, 1.0)) * 8000.0
+            heat_w += (
+                cache.nominal_power_w * scale / max(cache.nominal_power_w, 1.0)
+            ) * _REJECT_HEAT_W_AT_NOMINAL
         if not self.ring.slots:
             return
         cfg0 = self.ring.slots[0].cfg
@@ -228,7 +233,7 @@ class ATPESupervisor:
             ambient_temp_k=ambient,
             coolant_thermal_mass_j_per_k=cfg0.coolant_thermal_mass_j_per_k,
             coolant_radiator_w_per_k=cfg0.coolant_radiator_w_per_k,
-            heat_in_w=heat_w * dt_s,
+            heat_in_w=heat_w,
             duration_s=max(dt_s, 1e-6),
         )
 

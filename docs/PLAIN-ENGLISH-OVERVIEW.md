@@ -52,7 +52,8 @@ one a **"Move"** (A through M, plus a comparison study N). Every Move follows th
 Move N adds a head-to-head comparison against a conventional engine (see below).
 
 There is also a single command — **`verify.py`** — that re-checks every headline number and
-runs the whole test suite. Today it confirms **55 checks + 130 tests all pass**. That's our
+runs the whole test suite. Today it confirms **63 checks + 169 tests all pass** (Phoenix V3 /
+ATPE Brain tests need design-stack `numpy`). That's our
 "nothing is broken" green light. For a faster check (~10 seconds), use **`verify.py --quick`**.
 
 A **one-page executive summary** at the start of `main.py` rolls up the most important numbers
@@ -106,12 +107,12 @@ carbon baked into making the battery).
 
 | Body | Running cost / km | Lifetime CO₂ (all-in) |
 |------|------------------:|----------------------:|
-| Hatchback | $0.039 | 44 g/km |
-| Sedan | $0.040 | 47 g/km |
-| Crossover | $0.048 | 60 g/km |
-| AWD SUV | $0.072 | 102 g/km |
-| Van / MPV | $0.077 | 112 g/km |
-| Pickup | $0.092 | 137 g/km |
+| Hatchback | €0.039 | 44 g/km |
+| Sedan | €0.040 | 47 g/km |
+| Crossover | €0.048 | 60 g/km |
+| AWD SUV | €0.072 | 102 g/km |
+| Van / MPV | €0.077 | 112 g/km |
+| Pickup | €0.092 | 137 g/km |
 
 ### Move E — Try to spend the flywheel's "sprint" more cleverly
 The spinning buffer can deliver a big 140 kW burst. We built a smarter controller to spend
@@ -177,7 +178,8 @@ battery sits at whatever the outside temperature is.
 
 - **Fuel use is a U-shape — cheapest around 20 °C, worse in both directions, and worst in the
   cold.** Cold hurts most because dense air *and* cabin heating pile on together. Season to
-  season the swing is about **14–23%** — a real penalty the single mild-weather number hid.
+  season the swing is about **12–23%** — a real penalty the single mild-weather number hid
+  (SUV ~12%; light bodies nearer 23%).
 - **The battery never overheats — even on a +40 °C day.** It peaks around 42 °C, safely below
   the point where it would have to throttle back. This is the **same** "the pack is comfortably
   over-specced and runs cool" conclusion Move F reached, now confirmed in hot weather too.
@@ -303,9 +305,10 @@ has been built in a lab** (hardware).
 | **Six vehicle types** | **All pass** their performance targets in the model |
 | **Executive summary** | **One table** at the start of `main.py` covers fuel, cost, CO₂, seasons, cold start, payload, plug-in, ageing, ICE saving, and fault tolerance |
 | **Interactive dashboard** | Run `python -m dashboard` to pick a vehicle and watch a drive cycle play back |
-| **Integrity check** | `verify.py` → **PASS (55 checks + 130 tests)** |
+| **Integrity check** | `verify.py` → **PASS (63 checks + 169 tests)** |
 | **Virtual Gate 1 bench** | **48-cell matrix** in simulation + CSV (`scripts/export_gate1_matrix.py`) — not lab measured |
 | **Virtual Gate 4 scaling** | **X4–X16 tier-mix study** + CSV — every micro/medium/large split per ring size |
+| **ATPE Brain / ECU** | Gate 6 supervisory brain + Layer-2 ECU in software — not vehicle-certified |
 
 **Bottom line:** the laptop phase of the project is **finished enough to support funding and
 engineering conversations**. We are not looking for more simulation "Moves" before building
@@ -325,7 +328,7 @@ there is no lab rig, no measured efficiency, no test car.
 | **3** | Piston motion turns into electricity efficiently | Assumed numbers | **Not measured** |
 | **4** | Many cylinders work together | Virtual layout sweep + X12 ring model | **Not built** |
 | **5** | Whole car on real roads / dyno | **Done in simulation** | **Not built** |
-| **6** | Smarter AI control | Early study only | **Not product-ready** |
+| **6** | Smarter AI control | Supervisory brain + ECU runtime in software | **Not product / lab HIL** |
 | **7** | Manufacturable mechanical design | Concept images & storyboard | **No production CAD** |
 
 The **20-panel PHOENIX-X12 storyboard** in the `designs/` folder is the visual "what we want
@@ -373,7 +376,7 @@ itself from the live code and pass:
 .venv\Scripts\python.exe verify.py
 ```
 
-Today that prints **`RESULT: PASS (55 checks + 130 tests)`**. For a quick smoke check:
+Today that prints **`RESULT: PASS (63 checks + 169 tests)`**. For a quick smoke check:
 
 ```
 .venv\Scripts\python.exe verify.py --quick

@@ -7,7 +7,7 @@
 
 **Status:** Conceptual / simulation-validated — no hardware prototype measured in this repository.  
 **Audience:** Investors, OEM engineering partners, grant reviewers, patent counsel.  
-**Integrity:** `.venv\Scripts\python.exe verify.py` → PASS (58 checks + 135 tests).
+**Integrity:** `.venv\Scripts\python.exe verify.py` → PASS (63 checks + 169 tests).
 
 > **Disclaimer:** All performance figures below are **engineering projections** from the
 > Project Phoenix digital twin unless explicitly marked *measured*. Prefix external claims with
@@ -118,8 +118,11 @@ by the PCMRITMS inertial buffer first, then the battery (`07-core-concept-refine
 4. Spike detected (pedal rate proxy)? → Buffer discharges; ATPE setpoint rises on slow loop.
 5. Thermal / wear management → rotate firing pattern across units within a tier.
 
-A machine-learning study (`ml_study/`) demonstrates imitation of tier selection (~94.5% accuracy)
-but production control remains rule-based and deterministic in Phase 1.
+A machine-learning imitation study (`ml_study/`) demonstrated tier selection (~94.5% accuracy).
+The Gate 6 path now also includes a supervisory **ATPE Brain** (`atpe_brain/`) that emits
+setpoints to a Layer-2 **vehicle ECU** (`ecu/`) — actuators never take AI commands without ECU
+acknowledgement. Phase-1 vehicle twin control remains rule-based and deterministic for locked
+headlines; Brain/ECU are software-validated, not vehicle-certified.
 
 ---
 

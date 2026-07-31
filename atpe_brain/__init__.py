@@ -11,7 +11,17 @@ from .digital_twin import DigitalTwin, TwinForecast, TwinPrediction
 from .fault_manager import FaultAction, FaultManager, FaultPlan
 from .fleet_learning import FleetSample, FleetWeightAdapter
 from .health_monitor import HealthMonitor, RingHealthReport
-from .hil import DeterministicEcuStub, HilHarness, HilStepResult, VehicleEcuAdapter
+from .hil import (
+    DeterministicEcuStub,
+    HilFaultCaseResult,
+    HilHarness,
+    HilStepResult,
+    VehicleEcuAdapter,
+    run_controlled_shutdown_case,
+    run_hil_fault_suite,
+    run_lost_brain_frame_case,
+    run_sensor_delay_case,
+)
 from .optimizer import BrainCommands, OptimizationScore, Optimizer, OptimizerWeights
 from .pcmritms import BufferPlan, BufferTelemetry, PcmritmsCoordinator
 from .physics_twin import MultiHorizonPrediction, PhysicsTwinBackend, ProbeTwinBackend
@@ -42,8 +52,13 @@ __all__ = [
     "FleetSample",
     "FleetWeightAdapter",
     "HealthMonitor",
+    "HilFaultCaseResult",
     "HilHarness",
     "HilStepResult",
+    "run_controlled_shutdown_case",
+    "run_hil_fault_suite",
+    "run_lost_brain_frame_case",
+    "run_sensor_delay_case",
     "MultiHorizonPrediction",
     "OptimizationScore",
     "Optimizer",

@@ -5,13 +5,16 @@ It mirrors the Python reference runtime in `ecu/` (source of truth for laws).
 
 | File | Role |
 |------|------|
-| `ecu_bus.h` | Fixed message contract + flash ID |
-| `ecu_runtime.c` | 10 ms tick: load slew, thermal inhibit, buffer clamp, safe-state |
+| `ecu_bus.h` | Fixed message contract + flash ID + thermal/watchdog limits |
+| `ecu_runtime.c` | 10 ms tick: load slew, thermal inhibit, buffer clamp, fail-OFF safe-state |
 
 ```text
-Flash ID: PHOENIX-V31-ECU-R1
+Flash ID: PHOENIX-V31-ECU-R3
 Cycle:    10 ms
 Slots:    12 (4/6/2 ring)
+Safe:     watchdog / missing brain → EMERGENCY_OFF (fail-OFF)
+          operator stop → CONTROLLED_SHUTDOWN ramp (Python reference)
+Watchdog: sticky until ecu_reset_watchdog()
 ```
 
 Compile (host smoke):

@@ -19,6 +19,7 @@ from digital_twin import (
     phase1_config_for,
     PHASE1_BODIES,
     build_body_twins,
+    build_default_twin,
     evaluate,
     phase1_body_targets,
     run_fleet,
@@ -153,6 +154,34 @@ class FleetRegressionTest(unittest.TestCase):
                                    coup.fuel_l_per_100km, delta=1e-6)
             self.assertAlmostEqual(base.net_battery_kwh,
                                    coup.net_battery_kwh, delta=1e-3)
+
+
+class PowerBalanceTest(unittest.TestCase):
+    """Per-step DC bus identity: demand = gen + buffer + battery + shortfall - surplus."""
+
+    def test_per_step_power_balance_on_mixed_cycle(self) -> None:
+        twin = build_default_twin()
+        result = run(twin, DriveCycles.mixed(duration_s=120.0, dt_s=1.0))
+        self.assertGreater(len(result.records), 10)
+        for rec in result.records:
+            rhs = (
+                rec.generation_w
+                + rec.buffer_w
+                + rec.battery_w
+                + rec.shortfall_w
+                - rec.surplus_w
+            )
+            self.assertAlmostEqual(
+                rec.demand_w,
+                rhs,
+                delta=1e-6,
+                msg=(
+                    f"t={rec.time_s:.1f}s demand={rec.demand_w:.3f} "
+                    f"rhs={rhs:.3f} gen={rec.generation_w:.3f} "
+                    f"buf={rec.buffer_w:.3f} bat={rec.battery_w:.3f} "
+                    f"sf={rec.shortfall_w:.3f} sur={rec.surplus_w:.3f}"
+                ),
+            )
 
 
 class GenerationSlewTest(unittest.TestCase):

@@ -10,11 +10,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define ECU_FLASH_ID            "PHOENIX-V31-ECU-R1"
+#define ECU_FLASH_ID            "PHOENIX-V31-ECU-R3"
 #define ECU_INTERFACE_VERSION   "1.0.0"
 #define ECU_CYCLE_MS            10
 #define ECU_SLOT_COUNT          12
 #define ECU_LATENCY_BUDGET_MS   50
+#define ECU_BRAIN_TIMEOUT_MS    250
+#define ECU_WALL_DERATE_C       195.0f
+#define ECU_WALL_INHIBIT_C      205.0f
 
 typedef enum {
     MODE_OFF = 0,
@@ -68,6 +71,7 @@ typedef struct {
 
 /** Deterministic 10 ms ECU tick — implemented in ecu_runtime.c */
 void ecu_accept_brain(const brain_setpoint_frame_t *frame);
+void ecu_reset_watchdog(void);
 void ecu_tick(const float *wall_temp_c /*[12]*/, float buffer_soc, actuator_command_t *out);
 const char *ecu_flash_id(void);
 

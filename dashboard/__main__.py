@@ -15,8 +15,18 @@ def main() -> None:
                         help="port to listen on (default 8000)")
     parser.add_argument("--no-open", action="store_true",
                         help="do not open a browser automatically")
+    parser.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help="allow binding non-loopback hosts (exposes unauthenticated APIs)",
+    )
     args = parser.parse_args()
-    serve(host=args.host, port=args.port, open_browser=not args.no_open)
+    serve(
+        host=args.host,
+        port=args.port,
+        open_browser=not args.no_open,
+        allow_remote=args.allow_remote,
+    )
 
 
 if __name__ == "__main__":

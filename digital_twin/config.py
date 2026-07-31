@@ -235,6 +235,9 @@ class TwinConfig:
     vehicle: VehicleConfig
     control: ControlConfig
     traction: TractionConfig
+    # Opt-in HV bus / inverter limits. None or disabled = unlimited bus
+    # (preserves validated Phase-1 fuel figures).
+    dc_link: "DcLinkConfig | None" = None
 
 
 # --- Convenience builders ---------------------------------------------------
@@ -369,6 +372,25 @@ def phase1_variants(rotor_coupled: bool = False) -> dict[str, TwinConfig]:
     """All Phase-1 body variants keyed by name (AWD SUV first)."""
     return {b.name: phase1_config_for(b, rotor_coupled=rotor_coupled)
             for b in PHASE1_BODIES}
+
+
+def with_dc_link(
+    cfg: TwinConfig,
+    dc_link: "DcLinkConfig | None" = None,
+    *,
+    enabled: bool = True,
+) -> TwinConfig:
+    """Return a copy of ``cfg`` with HV DC-link / inverter limits enabled."""
+    from dataclasses import replace
+
+    from .dc_link import DcLinkConfig, default_phase1_dc_link
+
+    link = dc_link or default_phase1_dc_link(enabled=enabled)
+    if dc_link is None and not enabled:
+        link = DcLinkConfig(enabled=False)
+    elif dc_link is not None and enabled and not dc_link.enabled:
+        link = replace(dc_link, enabled=True)
+    return replace(cfg, dc_link=link)
 
 
 def with_gate1(
